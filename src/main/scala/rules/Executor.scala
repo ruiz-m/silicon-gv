@@ -154,7 +154,7 @@ object executor extends ExecutionRules with Immutable {
                             v.decider.pcs.branchConditionsAstNodes
                               .zip(v.decider.pcs.branchConditionsOrigins),
                             position,
-                            true)
+                            false)
 
                           (Success(), edge)
                         }
@@ -185,7 +185,7 @@ object executor extends ExecutionRules with Immutable {
                             v.decider.pcs.branchConditionsAstNodes
                               .zip(v.decider.pcs.branchConditionsOrigins),
                             position,
-                            true)
+                            false)
 
                           (Success(), edge)
                         }
