@@ -190,7 +190,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
 
     private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term]) = {
       /* Add terms to Silicon-managed path conditions */
-     println(s"Decider: adding path condition terms ${terms}")
+     //println(s"Decider: adding path condition terms ${terms}")
      terms foreach pathConditions.add
 
       /* Add terms to the prover's assumptions */

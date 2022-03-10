@@ -61,7 +61,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
 
     val body = predicate.body.get /* Only non-abstract predicates can be unfolded */
     val gIns = s.g + Store(predicate.formalArgs map (_.localVar) zip tArgs)
-    println(s"Setting fold AST node in state: ${origin}")
+    //println(s"Setting fold AST node in state: ${origin}")
     val s1 = s.copy(g = gIns,
                     smDomainNeeded = true,
                     foldOrUnfoldAstNode = origin)
@@ -94,7 +94,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
           smCache1
         }
 
-        println(s"Unsetting fold AST node in state: ${s2.foldOrUnfoldAstNode}")
+        //println(s"Unsetting fold AST node in state: ${s2.foldOrUnfoldAstNode}")
 
         val s3 = s2.copy(g = s.g,
                          h = h3,
@@ -109,7 +109,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                          permissionScalingFactor = s.permissionScalingFactor)
         chunkSupporter.produce(s3, s3.h, ch, v1)((s4, h1, v2) => {
 
-          println(s"Unsetting fold AST node in state: ${s4.foldOrUnfoldAstNode}")
+          //println(s"Unsetting fold AST node in state: ${s4.foldOrUnfoldAstNode}")
 
           Q(s4.copy(h = h1, foldOrUnfoldAstNode = None), v2)
         })
@@ -203,7 +203,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                   .setConstrainable(constrainableWildcards, false)
                 // we produce the body (this is an unfold?)
                 produce(s6, toSf(snap1), body, pve, v2)((s7, v3) => {
-                  println(s"Unsetting unfold AST node in state: ${s7.foldOrUnfoldAstNode}")
+                  //println(s"Unsetting unfold AST node in state: ${s7.foldOrUnfoldAstNode}")
                   val s8 = s7.copy(foldOrUnfoldAstNode = None)
                   v3.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
                   val predicateTrigger =
@@ -220,7 +220,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                 val s6 = s5.copy(g = gIns, h = h1, optimisticHeap = oh1)
                   .setConstrainable(constrainableWildcards, false)
                 produce(s6, toSf(snap2), body, pve, v2)((s7, v3) => {
-                  println(s"Unsetting unfold AST node in state: ${s7.foldOrUnfoldAstNode}")
+                  //println(s"Unsetting unfold AST node in state: ${s7.foldOrUnfoldAstNode}")
                   val s8 = s7.copy(foldOrUnfoldAstNode = None)
                   v3.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
                   val predicateTrigger =
@@ -239,7 +239,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
             val s5 = s4.copy(g = gIns, h = h1)
               .setConstrainable(constrainableWildcards, false)
             produce(s5, toSf(snap1), body, pve, v1)((s6, v2) => {
-              println(s"Unsetting unfold AST node in state: ${s6.foldOrUnfoldAstNode}")
+              //println(s"Unsetting unfold AST node in state: ${s6.foldOrUnfoldAstNode}")
               val s7 = s6.copy(foldOrUnfoldAstNode = None)
               v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
               val predicateTrigger =

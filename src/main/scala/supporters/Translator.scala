@@ -172,7 +172,7 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
   // and an error elsewhere...?
   private def variableResolver(variable: terms.Term): Option[ast.Exp] = {
 
-    println(s"Resolve target: ${variable}")
+    //println(s"Resolve target: ${variable}")
 
     variableResolverHelper(variable) match {
 
