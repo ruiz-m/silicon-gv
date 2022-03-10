@@ -226,7 +226,7 @@ object brancher extends BranchingRules with Immutable {
                 v.decider.pcs.branchConditionsAstNodes
                   .zip(v.decider.pcs.branchConditionsOrigins),
                 position.asInstanceOf[Exp],
-                true)
+                false)
 
               Success()
               /* TODO: eventually should warn about failing branch to users - JW */
@@ -260,7 +260,7 @@ object brancher extends BranchingRules with Immutable {
                 v.decider.pcs.branchConditionsAstNodes
                   .zip(v.decider.pcs.branchConditionsOrigins),
                 position.asInstanceOf[Exp],
-                true)
+                false)
 
               Success()
               /* TODO: eventually should warn about failing branch to users - JW */

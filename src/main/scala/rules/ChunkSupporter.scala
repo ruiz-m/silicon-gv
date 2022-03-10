@@ -119,7 +119,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                       v: Verifier)
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
-    var s1 = s;
+    var s1 = s.copy(h = h)
     if (consolidate)
       s1 = stateConsolidator.consolidate(s.copy(h = h), v)
     consumeGreedy(s1, s1.h, resource, args, perms, v) match {
