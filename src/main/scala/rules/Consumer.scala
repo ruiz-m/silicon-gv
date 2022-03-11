@@ -311,7 +311,7 @@ object consumer extends ConsumptionRules with Immutable {
                 }
               }
 
-            branch(s2, t0, e0, e0, branchPosition, v1)(
+            branch(s2, t0, e0, branchPosition, v1)(
               // the things in the branch (the then and else contents) may reach
               // the final case of consumeTlc, where we unset the method
               // callsite ast node
@@ -540,7 +540,7 @@ object consumer extends ConsumptionRules with Immutable {
 
        //eval for expression and perm (perm should always be 1)
         evalpc(s.copy(isImprecise = impr), perm, pve, v)((s1, tPerm, v1) =>
-          evalLocationAccesspc(s1.copy(isImprecise = impr), locacc, pve, v1)((s2, _, tArgs, v2) => {
+          evalLocationAccesspc(s1.copy(isImprecise = impr), locacc, pve, v1)((s2, predName, tArgs, v2) => {
             v2.decider.assertgv(s.isImprecise, perms.IsPositive(tPerm)) {
               case true =>
                 val resource = locacc.res(Verifier.program)
@@ -567,8 +567,18 @@ object consumer extends ConsumptionRules with Immutable {
                             case _ => sys.error("Conflicting positions found while producing runtime check!")
                           }
 
+                        val g = s5.oldStore match {
+                          case Some(g) => g
+                          case None => s5.g
+                        }
+                        val translatedArgs: Seq[ast.Exp] =
+                          tArgs.map(tArg => new Translator(s5.copy(g = g), v4.decider.pcs).translate(tArg) match {
+                            case None => sys.error("Error translating! Exiting safely.")
+                            case Some(expr) => expr
+                          })
+
                         runtimeChecks.addChecks(runtimeCheckAstNode,
-                          a,
+                           ast.PredicateAccessPredicate(ast.PredicateAccess(translatedArgs, predName)(), perm)(),
                            v4.decider.pcs.branchConditionsAstNodes
                              .zip(v.decider.pcs.branchConditionsOrigins),
                            a,
@@ -612,7 +622,7 @@ object consumer extends ConsumptionRules with Immutable {
 
        //eval for expression and perm (perm should always be 1)
         evalpc(s.copy(isImprecise = impr), perm, pve, v)((s1, tPerm, v1) =>
-          evalLocationAccesspc(s1.copy(isImprecise = impr), locacc, pve, v1)((s2, _, tArgs, v2) => {
+          evalLocationAccesspc(s1.copy(isImprecise = impr), locacc, pve, v1)((s2, field, tArgs, v2) => {
             // is this why we produce a runtime check for != Null? does the
             // path condition not imply this (no, apparently it does not, at least for the
             // extra_check_issue.vpr example)
@@ -645,8 +655,18 @@ object consumer extends ConsumptionRules with Immutable {
                             case _ => sys.error("Conflicting positions!")
                           }
 
+                        val g = s5.oldStore match {
+                          case Some(g) => g
+                          case None => s5.g
+                        }
+                        val translatedArgs: Seq[ast.Exp] =
+                          tArgs.map(tArg => new Translator(s5.copy(g = g), v4.decider.pcs).translate(tArg) match {
+                            case None => sys.error("Error translating! Exiting safely.")
+                            case Some(expr) => expr
+                          })
+
                         runtimeChecks.addChecks(runtimeCheckAstNode,
-                          a,
+                            ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, resource.asInstanceOf[ast.Field])(), perm)(),
                             v4.decider.pcs.branchConditionsAstNodes
                               .zip(v.decider.pcs.branchConditionsOrigins),
                             a,
@@ -688,8 +708,13 @@ object consumer extends ConsumptionRules with Immutable {
                             sys.error("Conflicting positions while looking for position!")
                         }
 
+                      val g = s2.oldStore match {
+                        case Some(g) => g
+                        case None => s2.g
+                      }
+
                       runtimeChecks.addChecks(runtimeCheckAstNode,
-                        (new Translator(s2, v2.decider.pcs).translate(returnedChecks) match {
+                        (new Translator(s2.copy(g = g), v2.decider.pcs).translate(returnedChecks) match {
                           case None => sys.error("Error translating! Exiting safely.")
                           case Some(expr) => expr
                         }),
@@ -826,9 +851,13 @@ object consumer extends ConsumptionRules with Immutable {
           case (verificationResult, Some(returnedChecks)) =>
             returnedState match {
               case Some((s1, pcs)) => {
-                
+                val g = s1.oldStore match {
+                  case Some(g) => g
+                  case None => s1.g
+                }
+
                 runtimeChecks.addChecks(runtimeCheckAstNode,
-                  (new Translator(s1, pcs).translate(returnedChecks) match {
+                  (new Translator(s1.copy(g = g), pcs).translate(returnedChecks) match {
                     case None => sys.error("Error translating! Exiting safely.")
                     case Some(expr) => expr
                   }),

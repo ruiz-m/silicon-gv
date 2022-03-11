@@ -22,7 +22,6 @@ import viper.silicon.verifier.Verifier
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
              condition: Term,
-             semantic: ast.Exp,
              position: ast.Exp,
              origin: Option[CheckPosition],
              v: Verifier,
@@ -35,7 +34,6 @@ trait BranchingRules extends SymbolicExecutionRules {
 object brancher extends BranchingRules with Immutable {
   def branch(s: State,
              condition: Term,
-             semantic: ast.Exp,
              position: ast.Exp,
              origin: Option[CheckPosition],
              v: Verifier,
@@ -46,6 +44,10 @@ object brancher extends BranchingRules with Immutable {
 
     val negatedCondition = Not(condition)
     val parallelizeElseBranch = s.parallelizeBranches && !s.underJoin
+    val g = s.oldStore match {
+      case Some(store) => store
+      case None => s.g
+    }
 
     /* Skip path feasibility check if one of the following holds:
      *   (1) the branching is due to the short-circuiting evaluation of a conjunction
@@ -125,7 +127,12 @@ object brancher extends BranchingRules with Immutable {
             }
 
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
-            v1.decider.setCurrentBranchCondition(negatedCondition, semantic, position, origin)
+            val negCond: Exp =
+              (new Translator(s1.copy(g = g), v1.decider.pcs).translate(negatedCondition) match {
+                case None => sys.error("Error translating! Exiting safely.")
+                case Some(expr) => expr
+              })
+            v1.decider.setCurrentBranchCondition(negatedCondition, negCond, position, origin)
 
             fElse(stateConsolidator.consolidateIfRetrying(s1, v1), v1)
           })
@@ -157,7 +164,12 @@ object brancher extends BranchingRules with Immutable {
     val rsThen: VerificationResult = (if (executeThenBranch) {
       executionFlowController.locally(s, v)((s1, v1) => {
         v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-        v1.decider.setCurrentBranchCondition(condition, semantic, position, origin)
+        val cond: Exp =
+          (new Translator(s1.copy(g = g), v1.decider.pcs).translate(condition) match {
+            case None => sys.error("Error translating! Exiting safely.")
+            case Some(expr) => expr
+          })
+        v1.decider.setCurrentBranchCondition(condition, cond, position, origin)
 
         fThen(stateConsolidator.consolidateIfRetrying(s1, v1), v1)
       })
@@ -209,7 +221,7 @@ object brancher extends BranchingRules with Immutable {
             case Failure(m1) => {
               /* run-time check for rsThen branch */
               val cond: Exp =
-                (new Translator(s, v.decider.pcs).translate(condition) match {
+                (new Translator(s.copy(g = g), v.decider.pcs).translate(condition) match {
                   case None => sys.error("Error translating! Exiting safely.")
                   case Some(expr) => expr
                 })
@@ -246,7 +258,7 @@ object brancher extends BranchingRules with Immutable {
             case Success() => {
               /* run-time check for rsElse branch */
               val negCond: Exp =
-                (new Translator(s, v.decider.pcs).translate(negatedCondition) match {
+                (new Translator(s.copy(g = g), v.decider.pcs).translate(negatedCondition) match {
                   case None => sys.error("Error translating! Exiting safely.")
                   case Some(expr) => expr
                 })
