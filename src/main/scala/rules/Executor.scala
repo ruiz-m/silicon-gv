@@ -615,9 +615,10 @@ object executor extends ExecutionRules with Immutable {
           })
           val pvePre = ErrorWrapperWithExampleTransformer(PreconditionInCallFalse(call).withReasonNodeTransformed(reasonTransformer), exampleTrafo)
 
+          // TODO: Fix this
           reconstructedPermissions.addMethodCallStatement(call,
             new Translator(s1, v1.decider.pcs).getAccessibilityPredicates,
-            zip3(v1.decider.pcs.branchConditions,
+            zip3(Seq[Term](),
               v1.decider.pcs.branchConditionsAstNodes,
               v1.decider.pcs.branchConditionsOrigins))
 
