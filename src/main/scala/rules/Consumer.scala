@@ -578,11 +578,12 @@ object consumer extends ConsumptionRules with Immutable {
                           })
 
                         runtimeChecks.addChecks(runtimeCheckAstNode,
-                           ast.PredicateAccessPredicate(ast.PredicateAccess(translatedArgs, predName)(), perm)(),
-                           v4.decider.pcs.branchConditionsAstNodes
-                             .zip(v.decider.pcs.branchConditionsOrigins),
-                           a,
-                           s5.forFraming)
+                          ast.PredicateAccessPredicate(ast.PredicateAccess(translatedArgs, predName)(), perm)(),
+                          viper.silicon.utils.zip3(v4.decider.pcs.branchConditionsSemanticAstNodes,
+                            v4.decider.pcs.branchConditionsAstNodes,
+                            v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
+                          a,
+                          s5.forFraming)
                       }
 
                       if (chunkExisted) {
@@ -666,9 +667,10 @@ object consumer extends ConsumptionRules with Immutable {
                           })
 
                         runtimeChecks.addChecks(runtimeCheckAstNode,
-                            ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, resource.asInstanceOf[ast.Field])(), perm)(),
-                            v4.decider.pcs.branchConditionsAstNodes
-                              .zip(v.decider.pcs.branchConditionsOrigins),
+                          ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, resource.asInstanceOf[ast.Field])(), perm)(),
+                          viper.silicon.utils.zip3(v4.decider.pcs.branchConditionsSemanticAstNodes,
+                            v4.decider.pcs.branchConditionsAstNodes,
+                            v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                             a,
                             s5.forFraming)
                       }
@@ -718,8 +720,9 @@ object consumer extends ConsumptionRules with Immutable {
                           case None => sys.error("Error translating! Exiting safely.")
                           case Some(expr) => expr
                         }),
-                          v2.decider.pcs.branchConditionsAstNodes
-                            .zip(v2.decider.pcs.branchConditionsOrigins),
+                        viper.silicon.utils.zip3(v2.decider.pcs.branchConditionsSemanticAstNodes,
+                          v2.decider.pcs.branchConditionsAstNodes,
+                          v2.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                           a,
                           s2.forFraming)
                     }
@@ -861,8 +864,9 @@ object consumer extends ConsumptionRules with Immutable {
                     case None => sys.error("Error translating! Exiting safely.")
                     case Some(expr) => expr
                   }),
-                    v.decider.pcs.branchConditionsAstNodes
-                      .zip(v.decider.pcs.branchConditionsOrigins),
+                  viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                    v.decider.pcs.branchConditionsAstNodes,
+                    v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                     a,
                     s1.forFraming)
 

@@ -193,7 +193,9 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
 
                 runtimeChecks.addChecks(runtimeCheckAstNode,
                   ast.PredicateAccessPredicate(pa, ast.FullPerm()())(),
-                    v2.decider.pcs.branchConditionsAstNodes.zip(v.decider.pcs.branchConditionsOrigins),
+                  viper.silicon.utils.zip3(v2.decider.pcs.branchConditionsSemanticAstNodes,
+                    v2.decider.pcs.branchConditionsAstNodes,
+                    v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                     pa,
                     s5.forFraming)
                 pa.addCheck(ast.PredicateAccessPredicate(pa, ast.FullPerm()())())

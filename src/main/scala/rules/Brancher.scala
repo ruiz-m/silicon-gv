@@ -13,7 +13,7 @@ import viper.silver.ast.Node
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.interfaces.{Unreachable, VerificationResult, Success, Failure}
-import viper.silicon.state.{State, CheckPosition, runtimeChecks}
+import viper.silicon.state.{State, CheckPosition, runtimeChecks, BranchCond}
 import viper.silicon.state.terms.{Not, Term}
 import viper.silicon.supporters.Translator
 import viper.silicon.utils
@@ -237,8 +237,9 @@ object brancher extends BranchingRules with Immutable {
 
               runtimeChecks.addChecks(runtimeCheckAstNode,
                 cond,
-                v.decider.pcs.branchConditionsAstNodes
-                  .zip(v.decider.pcs.branchConditionsOrigins),
+                viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                  v.decider.pcs.branchConditionsAstNodes,
+                  v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                 position.asInstanceOf[Exp],
                 false)
 
@@ -271,8 +272,9 @@ object brancher extends BranchingRules with Immutable {
 
               runtimeChecks.addChecks(runtimeCheckAstNode,
                 negCond,
-                v.decider.pcs.branchConditionsAstNodes
-                  .zip(v.decider.pcs.branchConditionsOrigins),
+                viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                  v.decider.pcs.branchConditionsAstNodes,
+                  v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                 position.asInstanceOf[Exp],
                 false)
 

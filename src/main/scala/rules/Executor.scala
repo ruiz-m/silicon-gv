@@ -151,8 +151,9 @@ object executor extends ExecutionRules with Immutable {
                             }
                           runtimeChecks.addChecks(CheckPosition.GenericNode(position),
                             prevEdge.asInstanceOf[cfg.ConditionalEdge[ast.Stmt, ast.Exp]].condition,
-                            v.decider.pcs.branchConditionsAstNodes
-                              .zip(v.decider.pcs.branchConditionsOrigins),
+                            viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                              v.decider.pcs.branchConditionsAstNodes,
+                              v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                             position,
                             false)
 
@@ -182,8 +183,9 @@ object executor extends ExecutionRules with Immutable {
                             }
                           runtimeChecks.addChecks(CheckPosition.GenericNode(position),
                             edge.asInstanceOf[cfg.ConditionalEdge[ast.Stmt, ast.Exp]].condition,
-                            v.decider.pcs.branchConditionsAstNodes
-                              .zip(v.decider.pcs.branchConditionsOrigins),
+                            viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                              v.decider.pcs.branchConditionsAstNodes,
+                              v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                             position,
                             false)
 
