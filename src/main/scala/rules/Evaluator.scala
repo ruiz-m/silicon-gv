@@ -1778,7 +1778,7 @@ object evaluator extends EvaluationRules with Immutable {
         val bc = And(ts1)
         // we call conjunctExps here to translate the Anded term to its
         // equivalent ast form
-        v2.decider.setCurrentBranchCondition(bc, conjunctExps(es1), None)
+        v2.decider.setCurrentBranchCondition(bc, conjunctExps(es1), conjunctExps(es1), None)
         evals(s3, es2, _ => pve, v2)((s4, ts2, v3) => {
           evalTriggers(s4, optTriggers.getOrElse(Nil), pve, v3)((s5, tTriggers, v4) => { // TODO: v4 isn't forward - problem?
             val (auxGlobalQuants, auxNonGlobalQuants) =
@@ -1805,7 +1805,7 @@ object evaluator extends EvaluationRules with Immutable {
     joiner.join[Term, Term](s, v)((s1, v1, QB) =>
       // TODO GV: we don't currently support this, so the branching information
       // passed in the second and third arguments is not correct!
-      brancher.branch(s1, tLhs, ast.NullLit()(), None, v1, fromShortCircuitingAnd)(
+      brancher.branch(s1, tLhs, ast.NullLit()(), ast.NullLit()(), None, v1, fromShortCircuitingAnd)(
         (s2, v2) => eval(s2, eRhs, pve, v2)(QB),
         (s2, v2) => QB(s2, True(), v2))
     )(entries => {
@@ -2289,7 +2289,7 @@ object evaluator extends EvaluationRules with Immutable {
         case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
         case _ =>
           joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, exps.head, None, v2, true) _ tupled swapIfAnd(
+            brancher.branch(s2, t0, exps.head, exps.head, None, v2, true) _ tupled swapIfAnd(
               (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
             ){case Seq(ent) =>

@@ -246,7 +246,10 @@ trait DefaultFunctionVerificationUnitProvider extends VerifierComponent { v: Ver
             // TODO;RGV: We don't currently support functions, so we pass the wrong
             // information for the branch tracking here (mostly because it's
             // difficult to retrieve, or seems that way)!
-            decider.setCurrentBranchCondition(And(bcsPre), ast.NullLit()(), None)
+            decider.setCurrentBranchCondition(And(bcsPre),
+              ast.NullLit()(),
+              ast.NullLit()(),
+              None)
             decider.assume(pcsPre)
             v.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterContract)
             eval(s1, body, FunctionNotWellformed(function), v)((s2, tBody, _) => {

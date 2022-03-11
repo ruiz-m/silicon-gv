@@ -25,6 +25,7 @@ import viper.silicon.utils.Counter
 
 trait RecordedPathConditions {
   def branchConditions: Stack[Term]
+  def branchConditionsSemanticAstNodes: Stack[Exp]
   def branchConditionsAstNodes: Stack[Exp]
   def branchConditionsOrigins: Stack[Option[CheckPosition]]
 
@@ -57,7 +58,10 @@ trait RecordedPathConditions {
 }
 
 trait PathConditionStack extends RecordedPathConditions {
-  def setCurrentBranchCondition(condition: Term, conditionAstNode: Exp, conditionOrigin: Option[CheckPosition]): Unit
+  def setCurrentBranchCondition(condition: Term,
+    conditionSemanticAstNode: Exp,
+    conditionAstNode: Exp,
+    conditionOrigin: Option[CheckPosition]): Unit
   def add(assumption: Term): Unit
   def add(declaration: Decl): Unit
   def pushScope(): Unit
@@ -78,6 +82,7 @@ private class PathConditionStackLayer
        with Cloneable {
 
   private var _branchCondition: Option[Term] = None
+  private var _branchConditionSemanticAstNode: Option[Exp] = None
   private var _branchConditionAstNode: Option[Exp] = None
   private var _branchConditionOrigin: Option[Option[CheckPosition]] = None
   private var _globalAssumptions: InsertionOrderedSet[Quantification] = InsertionOrderedSet.empty
@@ -85,6 +90,7 @@ private class PathConditionStackLayer
   private var _declarations: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
 
   def branchCondition: Option[Term] = _branchCondition
+  def branchConditionSemanticAstNode: Option[Exp] = _branchConditionSemanticAstNode
   def branchConditionAstNode: Option[Exp] = _branchConditionAstNode
   def branchConditionOrigin: Option[Option[CheckPosition]] = _branchConditionOrigin
   def globalAssumptions: InsertionOrderedSet[Quantification] = _globalAssumptions
@@ -100,6 +106,15 @@ private class PathConditionStackLayer
       + s"won't override (with $condition).")
 
     _branchCondition = Some(condition)
+  }
+
+  def branchConditionSemanticAstNode_=(conditionSemanticAstNode: Exp) {
+
+    assert(_branchConditionSemanticAstNode.isEmpty,
+      s"Branch condition position is already set (to ${_branchConditionSemanticAstNode.get}), "
+    + s"refusing to override (with $conditionSemanticAstNode).")
+
+    _branchConditionSemanticAstNode = Some(conditionSemanticAstNode)
   }
 
   def branchConditionAstNode_=(conditionAstNode: Exp) {
@@ -160,6 +175,10 @@ private class PathConditionStackLayer
 private trait LayeredPathConditionStackLike {
   protected def branchConditions(layers: Stack[PathConditionStackLayer]): Stack[Term] =
     layers.flatMap(_.branchCondition)
+
+  protected def branchConditionsSemanticAstNodes(layers:
+    Stack[PathConditionStackLayer]): Stack[Exp] =
+      layers.flatMap(_.branchConditionSemanticAstNode)
 
   protected def branchConditionsAstNodes(layers: Stack[PathConditionStackLayer]): Stack[Exp] =
     layers.flatMap(_.branchConditionAstNode)
@@ -227,6 +246,7 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
        with Immutable {
 
   val branchConditions: Stack[Term] = branchConditions(from)
+  val branchConditionsSemanticAstNodes: Stack[Exp] = branchConditionsSemanticAstNodes(from)
   val branchConditionsAstNodes: Stack[Exp] = branchConditionsAstNodes(from)
   val branchConditionsOrigins: Stack[Option[CheckPosition]] = branchConditionsOrigins(from)
   val assumptions: InsertionOrderedSet[Term] = assumptions(from)
@@ -264,10 +284,14 @@ private[decider] class LayeredPathConditionStack
 
   pushScope() /* Create an initial layer on the stack */
 
-  def setCurrentBranchCondition(condition: Term, conditionAstNode: Exp, conditionOrigin: Option[CheckPosition]): Unit = {
+  def setCurrentBranchCondition(condition: Term,
+    conditionSemanticAstNode: Exp,
+    conditionAstNode: Exp,
+    conditionOrigin: Option[CheckPosition]): Unit = {
     /* TODO: Split condition into top-level conjuncts as well? */
 
     layers.head.branchCondition = condition
+    layers.head.branchConditionSemanticAstNode = conditionSemanticAstNode
     layers.head.branchConditionAstNode = conditionAstNode
     layers.head.branchConditionOrigin = conditionOrigin
   }
@@ -331,6 +355,8 @@ private[decider] class LayeredPathConditionStack
   }
 
   def branchConditions: Stack[Term] = layers.flatMap(_.branchCondition)
+
+  def branchConditionsSemanticAstNodes: Stack[Exp] = layers.flatMap(_.branchConditionSemanticAstNode)
 
   def branchConditionsAstNodes: Stack[Exp] = layers.flatMap(_.branchConditionAstNode)
 

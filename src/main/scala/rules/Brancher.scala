@@ -22,6 +22,7 @@ import viper.silicon.verifier.Verifier
 trait BranchingRules extends SymbolicExecutionRules {
   def branch(s: State,
              condition: Term,
+             semantic: ast.Exp,
              position: ast.Exp,
              origin: Option[CheckPosition],
              v: Verifier,
@@ -34,6 +35,7 @@ trait BranchingRules extends SymbolicExecutionRules {
 object brancher extends BranchingRules with Immutable {
   def branch(s: State,
              condition: Term,
+             semantic: ast.Exp,
              position: ast.Exp,
              origin: Option[CheckPosition],
              v: Verifier,
@@ -123,7 +125,7 @@ object brancher extends BranchingRules with Immutable {
             }
 
             v1.decider.prover.comment(s"[else-branch: $cnt | $negatedCondition]")
-            v1.decider.setCurrentBranchCondition(negatedCondition, position, origin)
+            v1.decider.setCurrentBranchCondition(negatedCondition, semantic, position, origin)
 
             fElse(stateConsolidator.consolidateIfRetrying(s1, v1), v1)
           })
@@ -155,7 +157,7 @@ object brancher extends BranchingRules with Immutable {
     val rsThen: VerificationResult = (if (executeThenBranch) {
       executionFlowController.locally(s, v)((s1, v1) => {
         v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
-        v1.decider.setCurrentBranchCondition(condition, position, origin)
+        v1.decider.setCurrentBranchCondition(condition, semantic, position, origin)
 
         fThen(stateConsolidator.consolidateIfRetrying(s1, v1), v1)
       })

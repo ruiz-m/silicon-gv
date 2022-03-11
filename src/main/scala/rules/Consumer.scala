@@ -311,7 +311,7 @@ object consumer extends ConsumptionRules with Immutable {
                 }
               }
 
-            branch(s2, t0, e0, branchPosition, v1)(
+            branch(s2, t0, e0, e0, branchPosition, v1)(
               // the things in the branch (the then and else contents) may reach
               // the final case of consumeTlc, where we unset the method
               // callsite ast node
