@@ -618,7 +618,7 @@ object executor extends ExecutionRules with Immutable {
           // TODO: Fix this
           reconstructedPermissions.addMethodCallStatement(call,
             new Translator(s1, v1.decider.pcs).getAccessibilityPredicates,
-            zip3(Seq[Term](),
+            zip3(v1.decider.pcs.branchConditionsOrigins.map(entry => Null()),
               v1.decider.pcs.branchConditionsAstNodes,
               v1.decider.pcs.branchConditionsOrigins))
 
