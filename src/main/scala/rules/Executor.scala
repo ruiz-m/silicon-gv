@@ -102,9 +102,8 @@ object executor extends ExecutionRules with Immutable {
            */
 
           val s2point5 = s2.copy(loopPosition = None)
-
           val positionalCondition = ce.condition match {
-            case ast.Not(_) => ce.condition
+            case ast.Not(e) => e
             case _ => ce.condition
           }
 
