@@ -103,8 +103,13 @@ object executor extends ExecutionRules with Immutable {
 
           val s2point5 = s2.copy(loopPosition = None)
 
+          val positionalCondition = ce.condition match {
+            case ast.Not(_) => ce.condition
+            case _ => ce.condition
+          }
+
           // The loop location should be set for this branch, maybe
-          brancher.branch(s2point5, tCond, ce.condition, ce.condition, s1.loopPosition, v1)(
+          brancher.branch(s2point5, tCond, ce.condition, positionalCondition, s1.loopPosition, v1)(
             (s3, v3) => exec(s3, ce.target, ce.kind, v3)(Q),
             (_, _) => Unreachable())
         })
