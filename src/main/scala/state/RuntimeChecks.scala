@@ -4,8 +4,11 @@ import viper.silicon.Stack
 import viper.silver.ast
 import scala.collection.concurrent.{Map, TrieMap}
 
+case class BranchCond(cond: ast.Exp,
+                      position: ast.Exp,
+                      origin: Option[CheckPosition])
 case class CheckInfo(checks: ast.Exp,
-  branchInfo: Stack[(ast.Exp, Option[CheckPosition])],
+  branchInfo: Stack[BranchCond],
   context: ast.Exp,
   forFraming: Boolean)
 
@@ -24,7 +27,7 @@ object runtimeChecks {
 
   def addChecks(programPoint: CheckPosition,
     newCheck: ast.Exp,
-    branchInfo: Stack[(ast.Exp, Option[CheckPosition])],
+    branchInfo: Stack[BranchCond],
     context: ast.Exp,
     forFraming: Boolean): Unit = {
     

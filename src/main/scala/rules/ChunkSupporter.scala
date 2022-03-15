@@ -301,12 +301,24 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                     case _ => sys.error("Conflicting positions found while adding runtime check!")
                   }
 
+                val g = s2.oldStore match {
+                  case Some(g) => g
+                  case None => s2.g
+                }
+                val translatedArgs: Seq[ast.Exp] =
+                  args.map(tArg => new Translator(s2.copy(g = g), v.decider.pcs).translate(tArg) match {
+                    case None => sys.error("Error translating! Exiting safely.")
+                    case Some(expr) => expr
+                  })
+
                 runtimeChecks.addChecks(runtimeCheckAstNode,
-                  ast.FieldAccessPredicate(runtimeCheckFieldTarget, ast.FullPerm()())(),
-                  v.decider.pcs.branchConditionsAstNodes.zip(v.decider.pcs.branchConditionsOrigins),
+                  ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())(),
+                  viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                    v.decider.pcs.branchConditionsAstNodes,
+                    v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                     runtimeCheckFieldTarget,
                     s2.forFraming)
-                runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(runtimeCheckFieldTarget, ast.FullPerm()())())
+                runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())())
 
                 chunkSupporter.produce(s2, s2.optimisticHeap, ch, v)((s3, oh2, v2) =>
                   Q(s.copy(optimisticHeap = oh2), snap, v2))
@@ -340,12 +352,24 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                       case _ => sys.error("Conflicting positions found while adding runtime check!")
                     }
 
+                  val g = s.oldStore match {
+                    case Some(g) => g
+                    case None => s.g
+                  }
+                  val translatedArgs: Seq[ast.Exp] =
+                    args.map(tArg => new Translator(s.copy(g = g), v.decider.pcs).translate(tArg) match {
+                      case None => sys.error("Error translating! Exiting safely.")
+                      case Some(expr) => expr
+                    })
+
                   runtimeChecks.addChecks(runtimeCheckAstNode,
-                    ast.FieldAccessPredicate(runtimeCheckFieldTarget, ast.FullPerm()())(),
-                      v.decider.pcs.branchConditionsAstNodes.zip(v.decider.pcs.branchConditionsOrigins),
+                    ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())(),
+                    viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                      v.decider.pcs.branchConditionsAstNodes,
+                      v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                       runtimeCheckFieldTarget,
                       s.forFraming)
-                  runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(runtimeCheckFieldTarget, ast.FullPerm()())())
+                  runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())())
                 }
 
                 Q(s, snap, v)

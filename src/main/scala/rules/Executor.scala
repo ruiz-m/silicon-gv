@@ -109,7 +109,7 @@ object executor extends ExecutionRules with Immutable {
           }
 
           // The loop location should be set for this branch, maybe
-          brancher.branch(s2point5, tCond, ce.condition, positionalCondition, s1.loopPosition, v1)(
+          brancher.branch(s2point5, tCond, positionalCondition, s1.loopPosition, v1)(
             (s3, v3) => exec(s3, ce.target, ce.kind, v3)(Q),
             (_, _) => Unreachable())
         })
@@ -156,8 +156,9 @@ object executor extends ExecutionRules with Immutable {
                             }
                           runtimeChecks.addChecks(CheckPosition.GenericNode(position),
                             prevEdge.asInstanceOf[cfg.ConditionalEdge[ast.Stmt, ast.Exp]].condition,
-                            v.decider.pcs.branchConditionsAstNodes
-                              .zip(v.decider.pcs.branchConditionsOrigins),
+                            viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                              v.decider.pcs.branchConditionsAstNodes,
+                              v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                             position,
                             false)
 
@@ -187,8 +188,9 @@ object executor extends ExecutionRules with Immutable {
                             }
                           runtimeChecks.addChecks(CheckPosition.GenericNode(position),
                             edge.asInstanceOf[cfg.ConditionalEdge[ast.Stmt, ast.Exp]].condition,
-                            v.decider.pcs.branchConditionsAstNodes
-                              .zip(v.decider.pcs.branchConditionsOrigins),
+                            viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                              v.decider.pcs.branchConditionsAstNodes,
+                              v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                             position,
                             false)
 
@@ -639,7 +641,8 @@ object executor extends ExecutionRules with Immutable {
             mcLog.finish_precondition()
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
-            val s4 = s3.copy(g = s3.g + gOuts, oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
+            val outOldStore = Store(lhs.zip(outs).map(p => (p._1, gOuts(p._2))).toMap)
+            val s4 = s3.copy(g = s3.g + gOuts, oldStore = Some(s1.g + outOldStore), oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
             produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
 
               // we MUST unset both oldStore and the methodCallAstNode once we
