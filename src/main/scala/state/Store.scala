@@ -58,9 +58,17 @@ final class MapBackedStore private[state] (map: Map[ast.AbstractLocalVar, Term])
             // retreives the key? i think (without having to pattern match...) maybe
             case Some(kv) => Some(kv._1)
         }
-      case _ =>
-        sys.error("Non-variable argument given to getKeyForValue: " +
-          s"${symbolicVariable}")
+      case _ => map.find({
+          case (k, var2) => {
+              symbolicVariable == var2
+          }
+          case _ => false
+        }) match {
+            case None => None
+            // retreives the key? i think (without having to pattern match...) maybe
+            case Some(kv) => Some(kv._1)
+        }
+
     }
   }
   def +(entry: (ast.AbstractLocalVar, Term)) = new MapBackedStore(map + entry)
