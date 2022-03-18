@@ -48,9 +48,9 @@ trait RecordedPathConditions {
   // condition must...? maybe
   def getEquivalentVariables(variable: Term): Seq[Term] = {
     assumptions.foldRight[Seq[Term]](Seq.empty)((term, equivalentVars) => term match {
-      case Equals(var1 @ Var(_, _), var2 @ Var(_, _)) if var2 == variable =>
+      case Equals(var1 @ Var(_, _), term2) if term2 == variable =>
         var1 +: equivalentVars
-      case Equals(var1 @ Var(_, _), var2 @ Var(_, _)) if var1 == variable =>
+      case Equals(term1, var2 @ Var(_, _)) if term1 == variable =>
         var2 +: equivalentVars
       case _ => equivalentVars
     })
