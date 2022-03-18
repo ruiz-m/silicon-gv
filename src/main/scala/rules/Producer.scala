@@ -255,7 +255,9 @@ object producer extends ProductionRules with Immutable {
         val gbLog = new GlobalBranchRecord(ite, s, v.decider.pcs, "produce")
         val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
         SymbExLogger.currentLog().initializeBranching()
-        evalpc(s, e0, pve, v, false)((s1, t0, v1) => {
+        val s_1 = s.copy(generateChecks = false)
+        evalpc(s_1, e0, pve, v, false)((s1, t0, v1) => {
+          val s1_1 = s.copy(generateChecks = true)
           gbLog.finish_cond()
           val branch_res = {
 
@@ -268,7 +270,7 @@ object producer extends ProductionRules with Immutable {
             // }
             
             val branchPosition: Option[CheckPosition] =
-              (s.methodCallAstNode, s.foldOrUnfoldAstNode, s.loopPosition) match {
+              (s1_1.methodCallAstNode, s1_1.foldOrUnfoldAstNode, s1_1.loopPosition) match {
                 case (None, None, None) => None
                 case (Some(methodCallAstNode), None, None) =>
                   Some(CheckPosition.GenericNode(methodCallAstNode))
@@ -283,7 +285,7 @@ object producer extends ProductionRules with Immutable {
                     + "we want to know if this occurs!")
               }
 
-            branch(s1, t0, e0, branchPosition, v1)(
+            branch(s1_1, t0, e0, branchPosition, v1)(
               (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
                 val res1 = Q(s3, v3)
                 gbLog.finish_thnSubs()
