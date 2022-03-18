@@ -633,6 +633,7 @@ object executor extends ExecutionRules with Immutable {
           
           val s2 = s1.copy(g = Store(fargs.zip(tArgs)),
             oldStore = Some(s1.g),
+            oldHeaps = s1.oldHeaps + (Verifier.PRE_HEAP_LABEL -> Heap()) + (Verifier.PRE_OPTHEAP_LABEL -> Heap()),
             recordVisited = true,
             methodCallAstNode = Some(call))
 
@@ -641,9 +642,10 @@ object executor extends ExecutionRules with Immutable {
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val outOldStore = Store(lhs.zip(outs).map(p => (p._1, gOuts(p._2))).toMap)
-            val s4 = s3.copy(g = s3.g + gOuts, oldStore = Some(s1.g + outOldStore), oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h))
+            val s4 = s3.copy(g = s3.g + gOuts,
+              oldStore = Some(s1.g + outOldStore),
+              oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h) + (Verifier.PRE_HEAP_LABEL -> s1.h) + (Verifier.PRE_OPTHEAP_LABEL -> s1.optimisticHeap))
             produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
-
               // we MUST unset both oldStore and the methodCallAstNode once we
               // are done with the method call
               val s6 = s5.copy(oldStore = None, methodCallAstNode = None)

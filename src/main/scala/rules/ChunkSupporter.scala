@@ -301,12 +301,12 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                     case _ => sys.error("Conflicting positions found while adding runtime check!")
                   }
 
-                val g = s2.oldStore match {
-                  case Some(g) => g
-                  case None => s2.g
+                val (g, tH, tOH) = s2.oldStore match { /* this match sequence shouldn't be necessary based on currently functionality, but here for safety - JW */
+                  case Some(g) => (g, s2.h + s2.oldHeaps(Verifier.PRE_HEAP_LABEL), s2.optimisticHeap + s2.oldHeaps(Verifier.PRE_OPTHEAP_LABEL))
+                  case None => (s2.g, s2.h, s2.optimisticHeap)
                 }
                 val translatedArgs: Seq[ast.Exp] =
-                  args.map(tArg => new Translator(s2.copy(g = g), v.decider.pcs).translate(tArg) match {
+                  args.map(tArg => new Translator(s2.copy(g = g, h = tH, optimisticHeap = tOH), v.decider.pcs).translate(tArg) match {
                     case None => sys.error("Error translating! Exiting safely.")
                     case Some(expr) => expr
                   })
@@ -352,12 +352,12 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                       case _ => sys.error("Conflicting positions found while adding runtime check!")
                     }
 
-                  val g = s.oldStore match {
-                    case Some(g) => g
-                    case None => s.g
+                  val (g, tH, tOH) = s.oldStore match { /* Heap/OH part shouldn't be necessary based on currently functionality, but here for safety - JW */
+                    case Some(g) => (g, s.h + s.oldHeaps(Verifier.PRE_HEAP_LABEL), s.optimisticHeap + s.oldHeaps(Verifier.PRE_OPTHEAP_LABEL))
+                    case None => (s.g, s.h, s.optimisticHeap)
                   }
                   val translatedArgs: Seq[ast.Exp] =
-                    args.map(tArg => new Translator(s.copy(g = g), v.decider.pcs).translate(tArg) match {
+                    args.map(tArg => new Translator(s.copy(g = g, h = tH, optimisticHeap = tOH), v.decider.pcs).translate(tArg) match {
                       case None => sys.error("Error translating! Exiting safely.")
                       case Some(expr) => expr
                     })
