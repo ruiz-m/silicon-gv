@@ -7,7 +7,6 @@ import viper.silicon.resources.{FieldID, PredicateID}
 
 // should we use the path conditions from the state?
 final class Translator(s: State, pcs: RecordedPathConditions) {
-
   // this is, to some extent, a stub method currently
   def translate(t: terms.Term): Option[ast.Exp] = {
     t match {
@@ -221,14 +220,14 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
         s.optimisticHeap.getChunkForValue(variable) match {
           case None => store.getKeyForValue(variable)
           case Some((symVar, id)) =>
-            store.getKeyForValue(symVar) match {
+            variableResolver(symVar) match {
               case None => None
               case Some(astVar) =>
                 Some(ast.FieldAccess(astVar, ast.Field(id, varType)())())
             }
         }
       case Some((symVar, id)) =>
-        store.getKeyForValue(symVar) match {
+        variableResolver(symVar) match {
           case None => None
           case Some(astVar) =>
             Some(ast.FieldAccess(astVar, ast.Field(id, varType)())())
@@ -344,7 +343,7 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
 
                 val varType = resolveType(args.head)
 
-                val potentialAstVar = s.g.getKeyForValue(args.head) match {
+                val potentialAstVar = variableResolver(args.head) match {
                   case None => {
                     println(s"Warning: unable to translate ${args.head}")
                     None
