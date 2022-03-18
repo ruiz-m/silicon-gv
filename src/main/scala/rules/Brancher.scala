@@ -235,13 +235,15 @@ object brancher extends BranchingRules with Immutable {
                   case None => CheckPosition.GenericNode(position)
                 }
 
-              runtimeChecks.addChecks(runtimeCheckAstNode,
-                cond,
-                viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
-                  v.decider.pcs.branchConditionsAstNodes,
-                  v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
-                position.asInstanceOf[Exp],
-                false)
+              if (s.generateChecks) {
+                runtimeChecks.addChecks(runtimeCheckAstNode,
+                  cond,
+                  viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                    v.decider.pcs.branchConditionsAstNodes,
+                    v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
+                  position.asInstanceOf[Exp],
+                  false)
+              }
 
               Success()
               /* TODO: eventually should warn about failing branch to users - JW */
@@ -270,13 +272,15 @@ object brancher extends BranchingRules with Immutable {
                   case None => CheckPosition.GenericNode(position)
                 }
 
-              runtimeChecks.addChecks(runtimeCheckAstNode,
-                negCond,
-                viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
-                  v.decider.pcs.branchConditionsAstNodes,
-                  v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
-                position.asInstanceOf[Exp],
-                false)
+              if (s.generateChecks) {
+                runtimeChecks.addChecks(runtimeCheckAstNode,
+                  negCond,
+                  viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                    v.decider.pcs.branchConditionsAstNodes,
+                    v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
+                  position.asInstanceOf[Exp],
+                  false)
+              }
 
               Success()
               /* TODO: eventually should warn about failing branch to users - JW */
