@@ -346,7 +346,7 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
 
                 val potentialAstVar = s.g.getKeyForValue(args.head) match {
                   case None => {
-                    println(s"Warning: unable to translate ${args.head}")
+                    //println(s"Warning: unable to translate ${args.head}")
                     None
                   }
                   case Some(astVar) => Some(astVar)
@@ -379,7 +379,7 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
 
                 predicateArgs match {
                   case None => {
-                    println(s"Warning: unable to translate predicate ${chunk}")
+                    //println(s"Warning: unable to translate predicate ${chunk}")
                     None
                   }
                   case Some(exprs) =>
