@@ -72,7 +72,8 @@ final case class State(g: Store = Store(),
                        methodCallAstNode: Option[ast.MethodCall] = None,
                        foldOrUnfoldAstNode: Option[ast.Node] = None,
                        loopPosition: Option[CheckPosition.Loop] = None,
-                       forFraming: Boolean = false)
+                       forFraming: Boolean = false,
+                       generateChecks: Boolean = true)
     extends Mergeable[State] {
 
   def incCycleCounter(m: ast.Predicate) =
@@ -157,7 +158,7 @@ object State {
                  ssCache1, hackIssue387DisablePermissionConsumption1,
                  qpFields1, qpPredicates1, qpMagicWands1, smCache1, pmCache1, smDomainNeeded1,
                  predicateSnapMap1, predicateFormalVarMap1, hack,
-                 methodCallAstNode1, foldOrUnfoldAstNode1, loopPosition1, forFraming) =>
+                 methodCallAstNode1, foldOrUnfoldAstNode1, loopPosition1, forFraming, generateChecks) =>
 
         /* Decompose state s2: most values must match those of s1 */
         s2 match {
@@ -183,7 +184,8 @@ object State {
                      ssCache2, `hackIssue387DisablePermissionConsumption1`,
                      `qpFields1`, `qpPredicates1`, `qpMagicWands1`, smCache2, pmCache2, `smDomainNeeded1`,
                      `predicateSnapMap1`, `predicateFormalVarMap1`, `hack`,
-                     `methodCallAstNode1`, `foldOrUnfoldAstNode1`, `loopPosition1`, `forFraming`) =>
+                     `methodCallAstNode1`, `foldOrUnfoldAstNode1`, `loopPosition1`, `forFraming`,
+                     `generateChecks`) =>
 
             val functionRecorder3 = functionRecorder1.merge(functionRecorder2)
             val triggerExp3 = triggerExp1 && triggerExp2

@@ -64,6 +64,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
     //println(s"Setting fold AST node in state: ${origin}")
     val s1 = s.copy(g = gIns,
                     oldStore = Some(s.g),
+                    oldHeaps = s.oldHeaps + (Verifier.PRE_HEAP_LABEL -> Heap()) + (Verifier.PRE_OPTHEAP_LABEL -> Heap()),
                     smDomainNeeded = true,
                     foldOrUnfoldAstNode = origin)
               .scalePermissionFactor(tPerm)
@@ -99,6 +100,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
 
         val s3 = s2.copy(g = s.g,
                          oldStore = None,
+                         oldHeaps = s.oldHeaps,
                          h = h3,
                          smCache = smCache,
                          functionRecorder = s2.functionRecorder.recordFvfAndDomain(smDef),
@@ -108,6 +110,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
         val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap.convert(sorts.Snap), tPerm)
         val s3 = s2.copy(g = s.g,
                          oldStore = None,
+                         oldHeaps = s.oldHeaps,
                          smDomainNeeded = s.smDomainNeeded,
                          permissionScalingFactor = s.permissionScalingFactor)
         chunkSupporter.produce(s3, s3.h, ch, v1)((s4, h1, v2) => {
@@ -191,21 +194,27 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                       sys.error("Conflicting positions while looking for position!")
                   }
 
-                runtimeChecks.addChecks(runtimeCheckAstNode,
-                  ast.PredicateAccessPredicate(pa, ast.FullPerm()())(),
-                  viper.silicon.utils.zip3(v2.decider.pcs.branchConditionsSemanticAstNodes,
-                    v2.decider.pcs.branchConditionsAstNodes,
-                    v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
+                if (s5.generateChecks) {
+                  runtimeChecks.addChecks(runtimeCheckAstNode,
+                    ast.PredicateAccessPredicate(pa, ast.FullPerm()())(),
+                    viper.silicon.utils.zip3(v2.decider.pcs.branchConditionsSemanticAstNodes,
+                      v2.decider.pcs.branchConditionsAstNodes,
+                      v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                     pa,
                     s5.forFraming)
-                pa.addCheck(ast.PredicateAccessPredicate(pa, ast.FullPerm()())())
+                  pa.addCheck(ast.PredicateAccessPredicate(pa, ast.FullPerm()())())
+                }
               }
               if (chunkExisted) {
 
                 profilingInfo.incrementEliminatedConjuncts
 
-                val s6 = s5.copy(g = gIns, oldStore = Some(s5.g), h = h1, optimisticHeap = oh1)
-                  .setConstrainable(constrainableWildcards, false)
+                val s6 = s5.copy(g = gIns,
+                                 oldStore = Some(s5.g),
+                                 oldHeaps = s5.oldHeaps + (Verifier.PRE_HEAP_LABEL -> s5.h) + (Verifier.PRE_OPTHEAP_LABEL -> s5.optimisticHeap),
+                                 h = h1,
+                                 optimisticHeap = oh1)
+                          .setConstrainable(constrainableWildcards, false)
                 // we produce the body (this is an unfold?)
                 produce(s6, toSf(snap1), body, pve, v2)((s7, v3) => {
                   //println(s"Unsetting unfold AST node in state: ${s7.foldOrUnfoldAstNode}")
@@ -214,7 +223,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                   val predicateTrigger =
                     App(Verifier.predicateData(predicate).triggerFunction, snap1 +: tArgs)
                   v3.decider.assume(predicateTrigger)
-                  val s9 = s8.copy(g = s5.g, oldStore = None,
+                  val s9 = s8.copy(g = s5.g, oldStore = None, oldHeaps = s5.oldHeaps,
                     permissionScalingFactor = s.permissionScalingFactor)
                   Q(s9, v3)
                 })
@@ -222,8 +231,12 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
 
                 profilingInfo.incrementEliminatedConjuncts
 
-                val s6 = s5.copy(g = gIns, oldStore = Some(s5.g), h = h1, optimisticHeap = oh1)
-                  .setConstrainable(constrainableWildcards, false)
+                val s6 = s5.copy(g = gIns,
+                                 oldStore = Some(s5.g),
+                                 oldHeaps = s5.oldHeaps + (Verifier.PRE_HEAP_LABEL -> s5.h) + (Verifier.PRE_OPTHEAP_LABEL -> s5.optimisticHeap),
+                                 h = h1,
+                                 optimisticHeap = oh1)
+                          .setConstrainable(constrainableWildcards, false)
                 produce(s6, toSf(snap2), body, pve, v2)((s7, v3) => {
                   //println(s"Unsetting unfold AST node in state: ${s7.foldOrUnfoldAstNode}")
                   val s8 = s7.copy(foldOrUnfoldAstNode = None)
@@ -231,7 +244,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                   val predicateTrigger =
                     App(Verifier.predicateData(predicate).triggerFunction, snap2 +: tArgs)
                   v3.decider.assume(predicateTrigger)
-                  val s9 = s8.copy(g = s5.g, oldStore = None,
+                  val s9 = s8.copy(g = s5.g, oldStore = None, oldHeaps = s5.oldHeaps,
                     permissionScalingFactor = s.permissionScalingFactor)
                   Q(s9, v3)
                 })
@@ -241,8 +254,11 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
 
             profilingInfo.incrementEliminatedConjuncts
 
-            val s5 = s4.copy(g = gIns, oldStore = Some(s4.g), h = h1)
-              .setConstrainable(constrainableWildcards, false)
+            val s5 = s4.copy(g = gIns,
+                             oldStore = Some(s4.g),
+                             oldHeaps = s4.oldHeaps + (Verifier.PRE_HEAP_LABEL -> s4.h) + (Verifier.PRE_OPTHEAP_LABEL -> s4.optimisticHeap),
+                             h = h1)
+                      .setConstrainable(constrainableWildcards, false)
             produce(s5, toSf(snap1), body, pve, v1)((s6, v2) => {
               //println(s"Unsetting unfold AST node in state: ${s6.foldOrUnfoldAstNode}")
               val s7 = s6.copy(foldOrUnfoldAstNode = None)
@@ -250,7 +266,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
               val predicateTrigger =
                 App(Verifier.predicateData(predicate).triggerFunction, snap1 +: tArgs)
               v2.decider.assume(predicateTrigger)
-              val s8 = s7.copy(g = s4.g, oldStore = None,
+              val s8 = s7.copy(g = s4.g, oldStore = None, oldHeaps = s4.oldHeaps,
                 permissionScalingFactor = s.permissionScalingFactor)
               Q(s8, v2)
             })

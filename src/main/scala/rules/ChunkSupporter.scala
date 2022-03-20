@@ -273,6 +273,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
         Q(s, ch.snap, v)
 
       // should never reach this case
+      // TODO: ASK JENNA; err, we ARE reaching this case... is this a problem?
       case _ if v.decider.checkSmoke() =>
         Success()
 
@@ -301,29 +302,32 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                     case _ => sys.error("Conflicting positions found while adding runtime check!")
                   }
 
-                val g = s2.oldStore match {
-                  case Some(g) => g
-                  case None => s2.g
+                val (g, tH, tOH) = s2.oldStore match { /* this match sequence shouldn't be necessary based on currently functionality, but here for safety - JW */
+                  case Some(g) => (g, s2.h + s2.oldHeaps(Verifier.PRE_HEAP_LABEL), s2.optimisticHeap + s2.oldHeaps(Verifier.PRE_OPTHEAP_LABEL))
+                  case None => (s2.g, s2.h, s2.optimisticHeap)
                 }
                 val translatedArgs: Seq[ast.Exp] =
-                  args.map(tArg => new Translator(s2.copy(g = g), v.decider.pcs).translate(tArg) match {
+                  args.map(tArg => new Translator(s2.copy(g = g, h = tH, optimisticHeap = tOH), v.decider.pcs).translate(tArg) match {
                     case None => sys.error("Error translating! Exiting safely.")
                     case Some(expr) => expr
                   })
 
-                runtimeChecks.addChecks(runtimeCheckAstNode,
-                  ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())(),
-                  viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
-                    v.decider.pcs.branchConditionsAstNodes,
-                    v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
+                if (s2.generateChecks) {
+                  runtimeChecks.addChecks(runtimeCheckAstNode,
+                    ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())(),
+                    viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                      v.decider.pcs.branchConditionsAstNodes,
+                      v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                     runtimeCheckFieldTarget,
                     s2.forFraming)
-                runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())())
+                  runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())())
+                }
 
                 chunkSupporter.produce(s2, s2.optimisticHeap, ch, v)((s3, oh2, v2) =>
                   Q(s.copy(optimisticHeap = oh2), snap, v2))
               }
 
+              // TODO: ASK JENNA; should we be counting conjuncts here?
               case p : ast.Predicate => {
                 val snap = v.decider.fresh(s"$id(${args.mkString(",")})", sorts.Snap)
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(p.name), args, snap, FullPerm())
@@ -352,28 +356,35 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                       case _ => sys.error("Conflicting positions found while adding runtime check!")
                     }
 
-                  val g = s.oldStore match {
-                    case Some(g) => g
-                    case None => s.g
+                  val (g, tH, tOH) = s.oldStore match { /* Heap/OH part shouldn't be necessary based on currently functionality, but here for safety - JW */
+                    case Some(g) => (g, s.h + s.oldHeaps(Verifier.PRE_HEAP_LABEL), s.optimisticHeap + s.oldHeaps(Verifier.PRE_OPTHEAP_LABEL))
+                    case None => (s.g, s.h, s.optimisticHeap)
                   }
                   val translatedArgs: Seq[ast.Exp] =
-                    args.map(tArg => new Translator(s.copy(g = g), v.decider.pcs).translate(tArg) match {
+                    args.map(tArg => new Translator(s.copy(g = g, h = tH, optimisticHeap = tOH), v.decider.pcs).translate(tArg) match {
                       case None => sys.error("Error translating! Exiting safely.")
                       case Some(expr) => expr
                     })
 
-                  runtimeChecks.addChecks(runtimeCheckAstNode,
-                    ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())(),
-                    viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
-                      v.decider.pcs.branchConditionsAstNodes,
-                      v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
+                  if (s.generateChecks) {
+                    runtimeChecks.addChecks(runtimeCheckAstNode,
+                      ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())(),
+                      viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                        v.decider.pcs.branchConditionsAstNodes,
+                        v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
                       runtimeCheckFieldTarget,
                       s.forFraming)
-                  runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())())
+                    runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())())
+                  }
+                  // TODO: ASK JENNA; if we don't generate checks here, should
+                  // we increment the number of eliminated conjuncts?
+                  //
+                  // (in the 'else' case)
                 }
 
                 Q(s, snap, v)
               }
+              // TODO: ASK JENNA; should we be counting eliminated conjuncts here?
               case p: ast.Predicate => {
                 val snap = v.decider.fresh(s"$id(${args.mkString(",")})", sorts.Snap)
                 Q(s, snap, v)
