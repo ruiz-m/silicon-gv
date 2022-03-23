@@ -235,13 +235,13 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
 
     val methodVerificationResults = verificationTaskFutures.flatMap(_.get())
 
+    logger.debug(s"Final runtime checks: ${runtimeChecks.getChecks}")
+
     /** Write JavaScript-Representation of the log if the SymbExLogger is enabled */
     SymbExLogger.writeJSFile()
     /** Write DOT-Representation of the log if the SymbExLogger is enabled */
     SymbExLogger.writeDotFile()
     SymbExLogger.writeTextFile()
-
-    //println(runtimeChecks.getChecks)
 
     // _program.foreach((astNode) => {
     //   println(s"ast node: ${astNode}")
