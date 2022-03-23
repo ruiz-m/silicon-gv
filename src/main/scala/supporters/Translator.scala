@@ -166,7 +166,6 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
   // TODO: the invocation of getAccessibilityPredicates seems a bit wrong
   // TODO: make brancher translate its input (at the branch site)
   private def variableResolver(variable: terms.Term): Option[ast.Exp] = {
-
     // Retrieve aliasing information from the path condition; add our
     // input variable to it
     val pcsEquivalentVariables: Seq[terms.Term] =
@@ -214,11 +213,20 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
     //
     // Ask Jenna about this?
 
-    // Search both heaps for the variable
-    s.h.getChunkForValue(variable) match {
+    store.getKeyForValue(variable) match {
       case None =>
-        s.optimisticHeap.getChunkForValue(variable) match {
-          case None => store.getKeyForValue(variable)
+        // Search both heaps for the variable
+        s.h.getChunkForValue(variable) match {
+          case None =>
+            s.optimisticHeap.getChunkForValue(variable) match {
+              case None => None
+              case Some((symVar, id)) =>
+                variableResolver(symVar) match {
+                  case None => None
+                  case Some(astVar) =>
+                    Some(ast.FieldAccess(astVar, ast.Field(id, varType)())())
+                }
+            }
           case Some((symVar, id)) =>
             variableResolver(symVar) match {
               case None => None
@@ -226,12 +234,7 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
                 Some(ast.FieldAccess(astVar, ast.Field(id, varType)())())
             }
         }
-      case Some((symVar, id)) =>
-        variableResolver(symVar) match {
-          case None => None
-          case Some(astVar) =>
-            Some(ast.FieldAccess(astVar, ast.Field(id, varType)())())
-        }
+      case Some(v) => Some(v)
     }
   }
 
