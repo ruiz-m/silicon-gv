@@ -51,7 +51,7 @@ sealed trait CheckPosition {
     case CheckPosition.GenericNode(node) => node.uniqueIdentifier
     case CheckPosition.Loop(invariants, position) =>
       (invariants.foldRight(0)((silverExpr, result) => {
-        println(s"${result}")
+        // println(s"${result}")
         silverExpr.uniqueIdentifier + result
       })) + (position match {
         case LoopPosition.Before => 31
