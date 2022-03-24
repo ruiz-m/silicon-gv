@@ -7,6 +7,7 @@ import viper.silicon.resources.{FieldID, PredicateID}
 
 // should we use the path conditions from the state?
 final class Translator(s: State, pcs: RecordedPathConditions) {
+  private var translatingVars: Seq[terms.Term] = Seq()
   // this is, to some extent, a stub method currently
   def translate(t: terms.Term): Option[ast.Exp] = {
     t match {
@@ -166,8 +167,12 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
   // TODO: the invocation of getAccessibilityPredicates seems a bit wrong
   // TODO: make brancher translate its input (at the branch site)
   private def variableResolver(variable: terms.Term): Option[ast.Exp] = {
-    // Retrieve aliasing information from the path condition; add our
+    if (translatingVars.contains(variable)) None
+
+    // Retrieve aliasing information; add our
     // input variable to it
+    val heapAliases: Seq[(terms.Term, String)] =
+      (s.h + s.optimisticHeap).getChunksForValue(variable)
     val pcsEquivalentVariables: Seq[terms.Term] =
       variable +: pcs.getEquivalentVariables(variable)
 
@@ -175,7 +180,9 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
       (term, potentialResolvedVariable) =>
         potentialResolvedVariable match {
           case Some(_) => potentialResolvedVariable
-          case None    =>
+          case None    => {
+            if (translatingVars.contains(term)) None
+            translatingVars = translatingVars :+ term
             // Attempt normal variable resolution (looking in
             // both heaps, followed by the store)
             regularVariableResolver(term) match {
@@ -184,10 +191,49 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
               // in the store; the rest is constructed via a regex)
               //
               // Use caution here!
-              case None => regexVariableResolver(term)
+              case None => {
+                translatingVars = translatingVars.filter(v => v != term)
+                regexVariableResolver(term)
+              }
             }
+          }
         }
-    )
+    ) match {
+      case None => {
+        translatingVars = translatingVars :+ variable
+        heapAliases.foldRight[Option[ast.Exp]](None)(
+          (alias, potentialResolvedVariable) =>
+            potentialResolvedVariable match {
+              case Some(_) => potentialResolvedVariable
+              case None    => {
+                if (translatingVars.contains(alias._1)) None
+                translatingVars = translatingVars :+ alias._1
+                // Attempt normal variable resolution (looking in
+                // both heaps, followed by the store)
+                regularVariableResolver(alias._1) match {
+                  case Some(resolvedVariable) => Some(ast.FieldAccess(resolvedVariable, ast.Field(alias._2, resolveType(alias._1))())())
+                  // Attempt regex variable resolution (we only look
+                  // in the store; the rest is constructed via a regex)
+                  case None => {
+                    translatingVars = translatingVars.filter(v => v != alias._1)
+                    regexVariableResolver(alias._1) match {
+                      case Some(resolvedVariable) => Some(ast.FieldAccess(resolvedVariable, ast.Field(alias._2, resolveType(alias._1))())())
+                      case None => None
+                    }
+                  }
+                }
+              }
+            }
+        ) match {
+          case Some(e) => translatingVars = Seq(); Some(e)
+          case None => {
+            translatingVars = translatingVars.filter(v => v != variable)
+            None
+          }
+        }
+      }
+      case Some(e) => translatingVars = Seq(); Some(e)
+    }
   }
 
   private def regularVariableResolver(variable: terms.Term): Option[ast.Exp] = {
