@@ -7,6 +7,7 @@ import viper.silicon.resources.{FieldID, PredicateID}
 
 // should we use the path conditions from the state?
 final class Translator(s: State, pcs: RecordedPathConditions) {
+  private var translatingVars: Seq[terms.Term] = Seq()
   // this is, to some extent, a stub method currently
   def translate(t: terms.Term): Option[ast.Exp] = {
     t match {
@@ -165,29 +166,88 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
 
   // TODO: the invocation of getAccessibilityPredicates seems a bit wrong
   // TODO: make brancher translate its input (at the branch site)
-  private def variableResolver(variable: terms.Term): Option[ast.Exp] = {
-    // Retrieve aliasing information from the path condition; add our
+  private def variableResolver(variable: terms.Term, lenient: Boolean = false): Option[ast.Exp] = {
+    if (translatingVars.exists(t => t.toString == variable.toString && t.sort == variable.sort))
+      return None
+
+    // Retrieve aliasing information; add our
     // input variable to it
+    val heapAliases: Seq[(terms.Term, String)] =
+      (s.h + s.optimisticHeap).getChunksForValue(variable, lenient)
     val pcsEquivalentVariables: Seq[terms.Term] =
-      variable +: pcs.getEquivalentVariables(variable)
+      pcs.getEquivalentVariables(variable, lenient) :+ variable
 
     pcsEquivalentVariables.foldRight[Option[ast.Exp]](None)(
       (term, potentialResolvedVariable) =>
         potentialResolvedVariable match {
           case Some(_) => potentialResolvedVariable
-          case None    =>
-            // Attempt normal variable resolution (looking in
-            // both heaps, followed by the store)
-            regularVariableResolver(term) match {
-              case Some(resolvedVariable) => Some(resolvedVariable)
-              // Attempt regex variable resolution (we only look
-              // in the store; the rest is constructed via a regex)
-              //
-              // Use caution here!
-              case None => regexVariableResolver(term)
+          case None    => {
+            if (translatingVars.exists(t => t.toString == term.toString && t.sort == term.sort)) {
+              None
+            } else {
+              translatingVars = translatingVars :+ term
+              // Attempt normal variable resolution (looking in
+              // both heaps, followed by the store)
+              regularVariableResolver(term) match {
+                case Some(resolvedVariable) => Some(resolvedVariable)
+                // Attempt regex variable resolution (we only look
+                // in the store; the rest is constructed via a regex)
+                //
+                // Use caution here!
+                case None => {
+                  regexVariableResolver(term) match {
+                    case Some(resolvedVariable) => Some(resolvedVariable)
+                    case None => {
+                      translatingVars = translatingVars.filter(v => v != term)
+                      None
+                    }
+                  }
+                }
+              }
             }
+          }
         }
-    )
+    ) match {
+      case None => {
+        translatingVars = translatingVars :+ variable
+        heapAliases.foldRight[Option[ast.Exp]](None)(
+          (alias, potentialResolvedVariable) =>
+            potentialResolvedVariable match {
+              case Some(_) => potentialResolvedVariable
+              case None    => {
+                if (translatingVars.exists(t => t.toString == alias._1.toString && t.sort == alias._1.sort)) {
+                  None
+                } else {
+                  translatingVars = translatingVars :+ alias._1
+                  // Attempt normal variable resolution (looking in
+                  // both heaps, followed by the store)
+                  regularVariableResolver(alias._1) match {
+                    case Some(resolvedVariable) => Some(ast.FieldAccess(resolvedVariable, ast.Field(alias._2, resolveType(alias._1))())())
+                    // Attempt regex variable resolution (we only look
+                    // in the store; the rest is constructed via a regex)
+                    case None => {
+                      regexVariableResolver(alias._1) match {
+                        case Some(resolvedVariable) => Some(ast.FieldAccess(resolvedVariable, ast.Field(alias._2, resolveType(alias._1))())())
+                        case None => {
+                          translatingVars = translatingVars.filter(v => v != alias._1)
+                          None
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+        ) match {
+          case Some(e) => translatingVars = Seq(); Some(e)
+          case None => {
+            translatingVars = translatingVars.filter(v => v != variable)
+            None
+          }
+        }
+      }
+      case Some(e) => translatingVars = Seq(); Some(e)
+    }
   }
 
   private def regularVariableResolver(variable: terms.Term): Option[ast.Exp] = {
@@ -240,7 +300,6 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
 
   private def regexVariableResolver(variable: terms.Term): Option[ast.Exp] =
     variable match {
-
       // This is the last resort for translating a variable. It's not as robust
       // as the previous methods, and should be inspected carefully
       //
@@ -252,7 +311,6 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
             identifier: Identifier,
             termType
           ) => {
-
         // We must check that we have the top level receiver in the symbolic store
         //
         // The "top level receiver" is the Ref variable without any fields
@@ -280,19 +338,14 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
             .split('.')
 
         // This will be the name of the field for the receiver
-        val fieldName: String =
-          identifierArray
-            .slice(1, identifierArray.length)
-            .mkString(".")
+        val fieldName: String = identifierArray.last
 
-        // This regex extracts the part of the identifier that
-        // should be in the symbolic store
+        // This regex extracts the part of the identifier/symbolic value that
+        // is the receiver
         //
         // For 'p@01@08.field@01@09.anotherField@01@10', it should
-        // yield 'p@01@08'
+        // yield 'p@01@08.field@01@09'
         //
-        // TODO: Can't this be simplified to '\..*@[0-9].*'?
-        val receiverCleanupPattern = """\..*@[0-9][0-9]*.*""".r
 
         // This will be the receiver
         // Some complications come up because we were unable to find
@@ -301,9 +354,16 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
         val receiver: terms.Var =
           terms.Var(
             Identifier(
-              receiverCleanupPattern.replaceAllIn(identifier.name, "")
+              if (identifierArray.size > 1) {
+                identifier.name
+                  .split('.')
+                  .slice(0, identifierArray.length - 1)
+                  .mkString(".")
+              } else {
+                identifier.name
+              }
             ),
-            if (identifierArray.length != 0) {
+            if (identifierArray.size > 1) {
               terms.sorts.Ref
             } else {
               termType
@@ -314,20 +374,29 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
         // here, because we've constructed our own identifier
         // (identifiers appear to be compared non-structurally)
         val astVar = store.getKeyForValue(receiver, true) match {
-          case None                   => return None
+          case None                   => {
+            variableResolver(receiver, true) match {
+              case Some(e) => e
+              case None => return None
+            }
+          }
           case Some(concreteVariable) => concreteVariable
         }
 
         // Return the translated variable
-        Some(ast.FieldAccess(astVar, ast.Field(fieldName, varType)())())
-
+        if (identifierArray.size > 1) {
+          Some(ast.FieldAccess(astVar, ast.Field(fieldName, varType)())())
+        } else {
+          Some(astVar)
+        }
       }
 
       case _ => None
     }
 
   def getAccessibilityPredicates: Seq[ast.Exp] = {
-
+    Seq()
+/*
     (s.h.values ++ s.optimisticHeap.values)
       .map(chunk =>
         chunk match {
@@ -399,5 +468,7 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
             case Some(predicate) => predicate +: rest
           }
       )
+
+ */
   }
 }

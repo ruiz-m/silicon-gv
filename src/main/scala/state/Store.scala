@@ -8,7 +8,7 @@ package viper.silicon.state
 
 import viper.silver.ast
 import viper.silicon.{Map, toMap}
-import viper.silicon.state.terms.Term
+import viper.silicon.state.terms.{Term, sorts}
 import viper.silver.ast.AbstractLocalVar
 
 trait Store {
@@ -50,6 +50,13 @@ final class MapBackedStore private[state] (map: Map[ast.AbstractLocalVar, Term])
               identifier1.toString == identifier2.toString && sort1 == sort2
             } else {
               var1 == var2
+            }
+          }
+          case (k, term2) if term2.sort == sorts.Ref => {
+            if (lenient) {
+              symbolicVariable.toString == term2.toString && sort1 == term2.sort
+            } else {
+              var1 == term2
             }
           }
           case _ => false

@@ -10,7 +10,7 @@ import viper.silver.ast.Exp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.Stack
 import viper.silicon.state.CheckPosition
-import viper.silicon.state.terms.{And, Decl, Equals, Implies, Quantification, Quantifier, Term, Trigger, True, Var}
+import viper.silicon.state.terms.{And, Decl, Equals, Implies, Quantification, Quantifier, Term, Trigger, True, Var, sorts}
 import viper.silicon.utils
 import viper.silicon.utils.Counter
 
@@ -46,12 +46,20 @@ trait RecordedPathConditions {
 
   // If the heap does not contain a mapping for a snapshot(?) value, the path
   // condition must...? maybe
-  def getEquivalentVariables(variable: Term): Seq[Term] = {
+  def getEquivalentVariables(variable: Term, lenient: Boolean = false): Seq[Term] = {
     assumptions.foldRight[Seq[Term]](Seq.empty)((term, equivalentVars) => term match {
       case Equals(var1 @ Var(_, _), term2) if term2 == variable =>
         var1 +: equivalentVars
       case Equals(term1, var2 @ Var(_, _)) if term1 == variable =>
         var2 +: equivalentVars
+      case Equals(var1 @ Var(_, _), term2) if lenient && term2.toString == variable.toString && term2.sort == variable.sort =>
+        var1 +: equivalentVars
+      case Equals(term1, var2 @ Var(_, _)) if lenient && term1.toString == variable.toString && term1.sort == variable.sort =>
+        var2 +: equivalentVars
+      case Equals(term1, term2) if lenient && term1.sort == sorts.Ref && term2.toString == variable.toString && term2.sort == variable.sort =>
+        term1 +: equivalentVars
+      case Equals(term1, term2) if lenient && term2.sort == sorts.Ref && term1.toString == variable.toString && term1.sort == variable.sort =>
+        term2 +: equivalentVars
       case _ => equivalentVars
     })
   }

@@ -596,8 +596,6 @@ object consumer extends ConsumptionRules with Immutable {
 
                       else {
 
-                        profilingInfo.incrementEliminatedConjuncts
-
                         Q(s5, oh1, h1, snap2, v4)}})}
 
                   else if (chunkExisted) {
@@ -683,8 +681,9 @@ object consumer extends ConsumptionRules with Immutable {
 
                         profilingInfo.incrementEliminatedConjuncts
                         Q(s5, oh1, h1, snap1, v4)}
+
                       else {
-                        profilingInfo.incrementEliminatedConjuncts
+
                         Q(s5, oh1, h1, snap2, v4)}})}
                   else if (chunkExisted) {
                     profilingInfo.incrementEliminatedConjuncts
