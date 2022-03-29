@@ -33,7 +33,7 @@ class DefaultStateFormatter extends StateFormatter {
     val runtimeCheckMap = runtimeChecks.getChecks
     val eliminatedConjunctsNum = profilingInfo.getEliminatedConjuncts
     val totalConjunctsNum = profilingInfo.getTotalConjuncts
-    val permissions = reconstructedPermissions.getPermissions
+    val permissions = "Reconstructed permissions deprecated."
     val pcsStr = s"${format(pcs)}"
 
     s"""Imprecise: $isImpStr,

@@ -15,7 +15,7 @@ trait Heap {
   def +(other: Heap): Heap
   def -(chunk: Chunk): Heap
   def getChunkForValue(value: Term): Option[(Term, String)]
-  def getChunksForValue(value: Term): Seq[(Term, String)]
+  def getChunksForValue(value: Term, lenient: Boolean = false): Seq[(Term, String)]
 }
 
 trait HeapFactory[H <: Heap] {
@@ -45,10 +45,16 @@ final class ListBackedHeap private[state] (chunks: Vector[Chunk])
     }
   }
 
-  def getChunksForValue(value: Term): Seq[(Term, String)] = {
+  def getChunksForValue(value: Term, lenient: Boolean = false): Seq[(Term, String)] = {
     chunks.filter(chunk => {
       chunk match {
-        case BasicChunk(resourceID, id, args, snap, perm) => snap == value
+        case BasicChunk(resourceID, id, args, snap, perm) => {
+          if (snap != value && lenient) {
+            snap.toString == value.toString && snap.sort == value.sort
+          } else {
+            snap == value
+          }
+        }
         case _ => sys.error(s"The chunk type ${chunk} is not supported yet!")
       }
     }).foldLeft(Seq[(Term, String)]()) { (foundChunks, foundChunk) =>
