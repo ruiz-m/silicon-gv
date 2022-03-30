@@ -123,10 +123,10 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
             )
             None
           }
-          case _ => variableResolver(terms.Var(name, sort))
+          case _ => selectShortestField(variableResolver(terms.Var(name, sort)))
         }
       case terms.SortWrapper(t, sort) =>
-        variableResolver(terms.SortWrapper(t, sort))
+        Some(variableResolver(terms.SortWrapper(t, sort))(0))
       // how do we deal with snapshots? we need not {
       //
       // snapshots only exist in the path condition because the latter is
@@ -143,6 +143,30 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
       // case terms.Combine(_, _) => None
       // }
       case _ => sys.error(s"Unable to translate ${t}")
+    }
+  }
+
+  private def selectShortestField(candidateFields: Seq[ast.Exp]): Option[ast.Exp] = {
+    
+    if (candidateFields.exists(f => f.isInstanceOf[ast.FieldAccess])) {
+      candidateFields.foldRight[Option[ast.Exp]](None)((currentField, shortestField) =>
+          shortestField match {
+            case None => Some(currentField)
+            case Some(shortestFieldUnwrapped) => (currentField, shortestFieldUnwrapped) match {
+              case (ast.FieldAccess(_, ast.Field(name1, _)),
+                ast.FieldAccess(_, ast.Field(name2, _))) => {
+                  if (name1.length < name2.length) {
+                    Some(currentField)
+                  } else {
+                    Some(shortestFieldUnwrapped)
+                  }
+              }
+              case _ => Some(shortestFieldUnwrapped)
+          }})
+    } else {
+      // in this case, we only have a list of receivers, so we select one
+      // (they should all be equal in length!)
+      Some(candidateFields(0))
     }
   }
 
@@ -166,9 +190,11 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
 
   // TODO: the invocation of getAccessibilityPredicates seems a bit wrong
   // TODO: make brancher translate its input (at the branch site)
-  private def variableResolver(variable: terms.Term, lenient: Boolean = false): Option[ast.Exp] = {
+  private def variableResolver(variable: terms.Term, lenient: Boolean = false): Seq[ast.Exp] = {
+
+    // if we're already translating this variable
     if (translatingVars.exists(t => t.toString == variable.toString && t.sort == variable.sort))
-      return None
+      return Seq()
 
     // Retrieve aliasing information; add our
     // input variable to it
@@ -177,76 +203,66 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
     val pcsEquivalentVariables: Seq[terms.Term] =
       pcs.getEquivalentVariables(variable, lenient) :+ variable
 
-    pcsEquivalentVariables.foldRight[Option[ast.Exp]](None)(
-      (term, potentialResolvedVariable) =>
-        potentialResolvedVariable match {
-          case Some(_) => potentialResolvedVariable
-          case None    => {
-            if (translatingVars.exists(t => t.toString == term.toString && t.sort == term.sort)) {
-              None
-            } else {
-              translatingVars = translatingVars :+ term
-              // Attempt normal variable resolution (looking in
-              // both heaps, followed by the store)
-              regularVariableResolver(term) match {
-                case Some(resolvedVariable) => Some(resolvedVariable)
-                // Attempt regex variable resolution (we only look
-                // in the store; the rest is constructed via a regex)
-                //
-                // Use caution here!
-                case None => {
-                  regexVariableResolver(term) match {
-                    case Some(resolvedVariable) => Some(resolvedVariable)
-                    case None => {
-                      translatingVars = translatingVars.filter(v => v != term)
-                      None
-                    }
+    pcsEquivalentVariables.foldRight[Seq[ast.Exp]](Seq())(
+      (term, candidateResolvedVariables) =>
+          if (translatingVars.exists(t => t.toString == term.toString && t.sort == term.sort)) {
+            candidateResolvedVariables
+          } else {
+            translatingVars = translatingVars :+ term
+            // Attempt normal variable resolution (looking in
+            // both heaps, followed by the store)
+            regularVariableResolver(term) match {
+              case Some(resolvedVariable) => resolvedVariable +: candidateResolvedVariables
+              // Attempt regex variable resolution (we only look
+              // in the store; the rest is constructed via a regex)
+              //
+              // Use caution here!
+              case None => {
+                regexVariableResolver(term) match {
+                  case Some(resolvedVariable) => resolvedVariable +: candidateResolvedVariables
+                  case None => {
+                    translatingVars = translatingVars.filter(v => v != term)
+                    candidateResolvedVariables
                   }
                 }
               }
             }
           }
-        }
-    ) match {
-      case None => {
-        translatingVars = translatingVars :+ variable
-        heapAliases.foldRight[Option[ast.Exp]](None)(
-          (alias, potentialResolvedVariable) =>
-            potentialResolvedVariable match {
-              case Some(_) => potentialResolvedVariable
-              case None    => {
-                if (translatingVars.exists(t => t.toString == alias._1.toString && t.sort == alias._1.sort)) {
-                  None
-                } else {
-                  translatingVars = translatingVars :+ alias._1
-                  // Attempt normal variable resolution (looking in
-                  // both heaps, followed by the store)
-                  regularVariableResolver(alias._1) match {
-                    case Some(resolvedVariable) => Some(ast.FieldAccess(resolvedVariable, ast.Field(alias._2, resolveType(alias._1))())())
-                    // Attempt regex variable resolution (we only look
-                    // in the store; the rest is constructed via a regex)
-                    case None => {
-                      regexVariableResolver(alias._1) match {
-                        case Some(resolvedVariable) => Some(ast.FieldAccess(resolvedVariable, ast.Field(alias._2, resolveType(alias._1))())())
-                        case None => {
-                          translatingVars = translatingVars.filter(v => v != alias._1)
-                          None
-                        }
-                      }
-                    }
+    ) ++ {
+      translatingVars = translatingVars :+ variable
+      heapAliases.foldRight[Seq[ast.Exp]](Seq())(
+        (alias, candidateResolvedVariables) =>
+          if (translatingVars.exists(t => t.toString == alias._1.toString && t.sort == alias._1.sort)) {
+            candidateResolvedVariables
+          } else {
+            translatingVars = translatingVars :+ alias._1
+            // Attempt normal variable resolution (looking in
+            // both heaps, followed by the store)
+            regularVariableResolver(alias._1) match {
+              case Some(resolvedVariable) => ast.FieldAccess(resolvedVariable, ast.Field(alias._2, resolveType(alias._1))())() +: candidateResolvedVariables
+              // Attempt regex variable resolution (we only look
+              // in the store; the rest is constructed via a regex)
+              case None => {
+                regexVariableResolver(alias._1) match {
+                  case Some(resolvedVariable) => ast.FieldAccess(resolvedVariable, ast.Field(alias._2, resolveType(alias._1))())() +: candidateResolvedVariables
+                  case None => {
+                    translatingVars = translatingVars.filter(v => v != alias._1)
+                    candidateResolvedVariables
                   }
                 }
               }
             }
-        ) match {
-          case Some(e) => translatingVars = Seq(); Some(e)
-          case None => {
-            translatingVars = translatingVars.filter(v => v != variable)
-            None
           }
-        }
+          )
+    } match {
+      case Seq() => {
+        translatingVars = translatingVars.filter(v => v != variable)
+        Seq()
       }
-      case Some(e) => translatingVars = Seq(); Some(e)
+      case resolvedVariables => {
+        translatingVars = Seq()
+        resolvedVariables
+      }
     }
   }
 
@@ -282,16 +298,16 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
               case None => None
               case Some((symVar, id)) =>
                 variableResolver(symVar) match {
-                  case None => None
-                  case Some(astVar) =>
-                    Some(ast.FieldAccess(astVar, ast.Field(id, varType)())())
+                  case Seq() => None
+                  case resolvedVariables =>
+                    Some(ast.FieldAccess(resolvedVariables(0), ast.Field(id, varType)())())
                 }
             }
           case Some((symVar, id)) =>
             variableResolver(symVar) match {
-              case None => None
-              case Some(astVar) =>
-                Some(ast.FieldAccess(astVar, ast.Field(id, varType)())())
+              case Seq() => None
+              case resolvedVariables =>
+                Some(ast.FieldAccess(resolvedVariables(0), ast.Field(id, varType)())())
             }
         }
       case Some(v) => Some(v)
@@ -376,8 +392,8 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
         val astVar = store.getKeyForValue(receiver, true) match {
           case None                   => {
             variableResolver(receiver, true) match {
-              case Some(e) => e
-              case None => return None
+              case Seq() => return None
+              case resolvedVariables => resolvedVariables(0)
             }
           }
           case Some(concreteVariable) => concreteVariable
