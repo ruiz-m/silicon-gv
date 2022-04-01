@@ -12,6 +12,7 @@ import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationErro
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
+import viper.silver.ast.utils.conjunctExps
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
@@ -270,6 +271,10 @@ object executor extends ExecutionRules with Immutable {
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
             val sortedEdges = otherEdges ++ outEdges
+            // extracts all the conditions from the edges (from the statements
+            // that make them up?)
+            //
+            // keeps the unique ones
             val edgeConditions = sortedEdges.collect{case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition}
                                             .distinct
             // verifying a loop is like verifying both a method body and method call, kinda?
@@ -354,7 +359,27 @@ object executor extends ExecutionRules with Immutable {
             
             val s0 = s.copy(loopPosition = Some(CheckPosition.Loop(invs, LoopPosition.End)))
 
-            consumes(s0, invs, e => LoopInvariantNotPreserved(e), v)((s1, _, _) => {
+            val edges = s0.methodCfg.outEdges(block)
+            val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
+            val sortedEdges = otherEdges ++ outEdges
+            // extracts all the conditions from the edges (from the statements
+            // that make them up?)
+            //
+            // keeps the unique ones
+            val edgeConditions =
+              sortedEdges
+                .collect{case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition}
+                .distinct
+
+            // turn the sequence of edge conditions into one 'and' expression
+            val conjunctedEdgeConditions = conjunctExps(edgeConditions)
+
+            val edgeConditionsForFraming =
+              ast.EqCmp(conjunctedEdgeConditions, conjunctedEdgeConditions)()
+
+            val conditionsAndInvariants = invs :+ edgeConditionsForFraming
+
+            consumes(s0, conditionsAndInvariants, e => LoopInvariantNotPreserved(e), v)((s1, _, _) => {
               
               Success()})
         }
