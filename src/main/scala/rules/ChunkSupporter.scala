@@ -275,6 +275,9 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
       // should never reach this case
       // TODO: ASK JENNA; err, we ARE reaching this case... is this a problem?
       case _ if v.decider.checkSmoke() =>
+
+        profilingInfo.incrementEliminatedConjuncts
+
         Success()
 
       case _ => {
