@@ -382,7 +382,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                   // (in the 'else' case)
                 }
 
-                Q(s, snap, v)
+                Q(s.copy(madeOptimisticAssumptions = true), snap, v)
               }
               // TODO: ASK JENNA; should we be counting eliminated conjuncts here?
               case p: ast.Predicate => {

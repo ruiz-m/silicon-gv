@@ -213,12 +213,12 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                                  oldStore = Some(s5.g),
                                  oldHeaps = s5.oldHeaps + (Verifier.PRE_HEAP_LABEL -> s5.h) + (Verifier.PRE_OPTHEAP_LABEL -> s5.optimisticHeap),
                                  h = h1,
-                                 optimisticHeap = oh1)
+                                 optimisticHeap = oh1,
+                                 needConditionFramingUnfold = true)
                           .setConstrainable(constrainableWildcards, false)
                 // we produce the body (this is an unfold?)
                 produce(s6, toSf(snap1), body, pve, v2)((s7, v3) => {
-                  //println(s"Unsetting unfold AST node in state: ${s7.foldOrUnfoldAstNode}")
-                  val s8 = s7.copy(foldOrUnfoldAstNode = None)
+                  val s8 = s7.copy(foldOrUnfoldAstNode = None, needConditionFramingUnfold = false)
                   v3.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
                   val predicateTrigger =
                     App(Verifier.predicateData(predicate).triggerFunction, snap1 +: tArgs)
@@ -257,11 +257,11 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
             val s5 = s4.copy(g = gIns,
                              oldStore = Some(s4.g),
                              oldHeaps = s4.oldHeaps + (Verifier.PRE_HEAP_LABEL -> s4.h) + (Verifier.PRE_OPTHEAP_LABEL -> s4.optimisticHeap),
-                             h = h1)
+                             h = h1,
+                             needConditionFramingUnfold = true)
                       .setConstrainable(constrainableWildcards, false)
             produce(s5, toSf(snap1), body, pve, v1)((s6, v2) => {
-              //println(s"Unsetting unfold AST node in state: ${s6.foldOrUnfoldAstNode}")
-              val s7 = s6.copy(foldOrUnfoldAstNode = None)
+              val s7 = s6.copy(foldOrUnfoldAstNode = None, needConditionFramingUnfold = false)
               v2.decider.prover.saturate(Verifier.config.z3SaturationTimeouts.afterUnfold)
               val predicateTrigger =
                 App(Verifier.predicateData(predicate).triggerFunction, snap1 +: tArgs)

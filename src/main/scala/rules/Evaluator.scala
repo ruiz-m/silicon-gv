@@ -19,6 +19,7 @@ import viper.silicon.state.terms._
 import viper.silicon.state.terms.implicits._
 import viper.silicon.state.terms.perms.{IsNonNegative, IsPositive}
 import viper.silicon.state.terms.predef.`?r`
+import viper.silicon.supporters.Translator
 import viper.silicon.utils.consistency.createUnexpectedNodeError
 import viper.silicon.utils.toSf
 import viper.silicon.utils.ast.flattenOperator
@@ -1114,7 +1115,52 @@ object evaluator extends EvaluationRules with Immutable {
             val ve = pve dueTo InsufficientPermission(fa)
             val resource = fa.res(Verifier.program)
             val addToOh = false /* so lookup knows whether or not to add optimistically assumed permissions to the optimistic heap */
+            
+            val s1_0 = s1.copy(madeOptimisticAssumptions = false)
+
             chunkSupporter.lookup(s1, s1.h, s1.optimisticHeap, addToOh, resource, fa, tArgs, pve, ve, v1, generateChecks)((s2, h2, oh2, tSnap, v2) => {
+
+              if (s2.madeOptimisticAssumptions &&
+                s2.needConditionFramingProduce &&
+                s2.needConditionFramingUnfold) {
+
+                  // do the framing check
+                  
+                  // println("We are (should be) making a runtime check")
+
+                  val runtimeCheckAstNode: CheckPosition =
+                    (s2.methodCallAstNode, s2.foldOrUnfoldAstNode, s2.loopPosition) match {
+                      case (None, None, None) => CheckPosition.GenericNode(fa)
+                      case (Some(methodCallAstNode), None, None) => CheckPosition.GenericNode(methodCallAstNode)
+                      case (None, Some(foldOrUnfoldAstNode), None) => CheckPosition.GenericNode(foldOrUnfoldAstNode)
+                      case (None, None, Some(loopPosition)) => loopPosition
+                      case _ => sys.error("Conflicting positions found while adding runtime check!")
+                    }
+
+                  val (g, tH, tOH) = s2.oldStore match { /* Heap/OH part shouldn't be necessary based on currently functionality, but here for safety - JW */
+                   case Some(g) => (g, s2.h + s2.oldHeaps(Verifier.PRE_HEAP_LABEL), s2.optimisticHeap + s2.oldHeaps(Verifier.PRE_OPTHEAP_LABEL))
+                   case None => (s2.g, s2.h, s2.optimisticHeap)
+                  }
+
+                  val astRcvr = new Translator(s2.copy(g = g, h = tH, optimisticHeap = tOH),
+                    v2.decider.pcs).translate(tRcvr) match {
+                      case None => sys.error("Error translating! Exiting safely.")
+                      case Some(translatedReceiver) => translatedReceiver
+                    }
+
+                  // we shouldn't check the generateChecks field of the state
+                  // here, because it's always going to be false
+                  // (since we're in evalpc!)
+                  runtimeChecks.addChecks(runtimeCheckAstNode,
+                    ast.FieldAccessPredicate(ast.FieldAccess(astRcvr, fa.field)(),
+                      ast.FullPerm()())(),
+                    viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                      v.decider.pcs.branchConditionsAstNodes,
+                      v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
+                    fa,
+                    s.forFraming)
+              }
+              
               val fr = s2.functionRecorder.recordSnapshot(fa, v2.decider.pcs.branchConditions, tSnap)
               val s3 = s2.copy(h = h2, optimisticHeap = oh2, functionRecorder = fr)
               Q(s3, tSnap, v1)

@@ -252,12 +252,13 @@ object producer extends ProductionRules with Immutable {
       //
       // IMPORTANT: that field must be unset before 
       case ite @ ast.CondExp(e0, a1, a2) =>
+
         val gbLog = new GlobalBranchRecord(ite, s, v.decider.pcs, "produce")
         val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
         SymbExLogger.currentLog().initializeBranching()
-        val s_1 = s.copy(generateChecks = false)
+        val s_1 = s.copy(generateChecks = false, needConditionFramingProduce = true)
         evalpc(s_1, e0, pve, v, false)((s1, t0, v1) => {
-          val s1_1 = s.copy(generateChecks = true)
+          val s1_1 = s.copy(generateChecks = true, needConditionFramingProduce = false)
           gbLog.finish_cond()
           val branch_res = {
 
