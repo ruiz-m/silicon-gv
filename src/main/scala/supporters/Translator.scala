@@ -433,7 +433,7 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
 
                 val potentialAstVar = variableResolver(args.head) match {
                   case None => {
-                    println(s"Warning: unable to translate ${args.head}")
+                    //println(s"Warning: unable to translate ${args.head}")
                     None
                   }
                   case Some(astVar) => Some(astVar)
