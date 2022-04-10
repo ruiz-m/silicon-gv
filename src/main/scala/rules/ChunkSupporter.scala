@@ -383,6 +383,9 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                   // we increment the number of eliminated conjuncts?
                   //
                   // (in the 'else' case)
+                } else {
+
+                  profilingInfo.incrementEliminatedConjuncts
                 }
 
                 Q(s.copy(madeOptimisticAssumptions = true), snap, v)
