@@ -596,6 +596,10 @@ object consumer extends ConsumptionRules with Immutable {
 
                       else {
 
+                        if (chunkExisted1) {
+                          profilingInfo.incrementEliminatedConjuncts
+                        }
+
                         Q(s5, oh1, h1, snap2, v4)}})}
 
                   else if (chunkExisted) {
@@ -683,6 +687,12 @@ object consumer extends ConsumptionRules with Immutable {
                         Q(s5, oh1, h1, snap1, v4)}
 
                       else {
+
+                        // we don't want to count it if the runtime check
+                        // path happened, i think
+                        if (chunkExisted1) {
+                          profilingInfo.incrementEliminatedConjuncts
+                        }
 
                         Q(s5, oh1, h1, snap2, v4)}})}
                   else if (chunkExisted) {
