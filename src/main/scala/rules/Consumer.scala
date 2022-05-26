@@ -852,7 +852,7 @@ object consumer extends ConsumptionRules with Immutable {
 
         evalAndAssert(s, impr, a, pve, v)((s1, t, v1) => {
 
-          returnedState = Some((s1, v1.decider.pcs))
+          returnedState = Some((s1, v1.decider.pcs.duplicate()))
 
           // the methodCallAstNode field should only stick around until we
           // consume the precondition of the method, right? we unset it here if
