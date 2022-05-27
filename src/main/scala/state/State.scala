@@ -30,7 +30,7 @@ final case class State(g: Store = Store(),
                        visited: List[ast.Predicate] = Nil, /* TODO: Use a multiset instead of a list */
 
                        methodCfg: SilverCfg = null,
-                       invariantContexts: Stack[Heap] = Stack.empty,
+                       invariantContexts: Stack[(Boolean,Boolean,Heap,Heap)] = Stack.empty,
 
                        constrainableARPs: InsertionOrderedSet[Var] = InsertionOrderedSet.empty,
                        quantifiedVariables: Stack[Var] = Nil,

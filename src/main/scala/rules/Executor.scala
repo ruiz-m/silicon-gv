@@ -60,7 +60,8 @@ object executor extends ExecutionRules with Immutable {
       // out edges lead out of loops (and maybe to another loop)
       // normal edges are between statements (which are not loops)
       case cfg.Kind.Out => {
-        val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head, v)
+        val (fr1, h1) = stateConsolidator.merge(s.functionRecorder, s.h, s.invariantContexts.head._3, v)
+        val (fr2, oh) = stateConsolidator.merge(fr1, s.optimisticHeap, s.invariantContexts.head._4, v)
 
         val potentialCheckPosition: Option[CheckPosition.Loop] = {
           val loopInvariant = originatingBlock match {
@@ -74,7 +75,8 @@ object executor extends ExecutionRules with Immutable {
           }
         }
 
-        val s1 = s.copy(functionRecorder = fr1, h = h1,
+        val s1 = s.copy(functionRecorder = fr2,
+          isImprecise = s.invariantContexts.head._2, h = h1, optimisticHeap = oh,
           invariantContexts = s.invariantContexts.tail,
           loopPosition = potentialCheckPosition)
 
@@ -134,7 +136,11 @@ object executor extends ExecutionRules with Immutable {
     if (edges.isEmpty) {
       Q(s, v)
     } else {
-      if (s.isImprecise) {
+      val isImprecise = originatingBlock match {
+        case cfg.LoopHeadBlock(_, _) => s.invariantContexts.head._1
+        case _ => s.isImprecise
+      }
+      if (isImprecise) {
         val rsTuple =
         edges.foldLeft((Unreachable(): VerificationResult, edges.head: SilverEdge)) { (rs, edge) =>
           val rsEdge = follow(s, originatingBlock, edge, v)(Q)
@@ -266,7 +272,10 @@ object executor extends ExecutionRules with Immutable {
               /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
             val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
-            val sBody = s.copy(g = gBody, h = Heap())
+            val sBody = s.copy(isImprecise = false,
+                               g = gBody,
+                               h = Heap(),
+                               optimisticHeap = Heap())
 
             val edges = s.methodCfg.outEdges(block)
             val (outEdges, otherEdges) = edges partition(_.kind == cfg.Kind.Out)
@@ -277,9 +286,6 @@ object executor extends ExecutionRules with Immutable {
             // keeps the unique ones
             val edgeConditions = sortedEdges.collect{case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition}
                                             .distinct
-            // verifying a loop is like verifying both a method body and method call, kinda?
-            // method body when verifying the actual loop (produce invariant at beginning, consume at end
-            // method call when encountering loop (consume invariant before, produce after)
 
             type PhaseData = (State, RecordedPathConditions, InsertionOrderedSet[FunctionDecl])
             var phase1data: Vector[PhaseData] = Vector.empty
@@ -288,16 +294,8 @@ object executor extends ExecutionRules with Immutable {
                 v0.decider.prover.comment("Loop head block: Check well-definedness of invariant")
                 val mark = v0.decider.setPathConditionMark()
 
-                // ASK JENNA ABOUT THIS
-                // this is a produce, kinda
-                // where do we run the loop body?
-                // where is the consume?
-                // set for at beginning of loop body here?
-
                 wellformed(
-                  s0.copy(isImprecise = false,
-                    optimisticHeap = Heap(),
-                    loopPosition = Some(CheckPosition.Loop(invs, LoopPosition.Beginning))),
+                  s0.copy(loopPosition = Some(CheckPosition.Loop(invs, LoopPosition.Beginning))),
                   freshSnap,
                   invs,
                   ContractNotWellformed(viper.silicon.utils.ast.BigAnd(invs)),
@@ -317,14 +315,9 @@ object executor extends ExecutionRules with Immutable {
                       intermediateResult && executionFlowController.locally(s1point5, v1)((s2, v2) => {
                         eval(s2, eCond, WhileFailed(eCond), v2)((_, _, _) =>
                           Success())})}})})
-            // This is likely the and operator from the rule; we check well
-            // formedness and potentially return success above
+
             && executionFlowController.locally(s, v)((s0, v0) => {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
-                // This is the consume after the conjunct
-                // Where is the produce?
-                // set enum for before loop in symbolic state here?
-                // consume for before the beginning of the loop
                 consumes(s0.copy(loopPosition = Some(CheckPosition.Loop(invs, LoopPosition.Before))),
                   invs, LoopInvariantNotEstablished, v0)((sLeftover0, _, v1) => {
 
@@ -332,11 +325,11 @@ object executor extends ExecutionRules with Immutable {
                   
                   // unset enum for before loop in symbolic state here?
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
-                  // uses it (phase1data) again here after producing
+
                   phase1data.foldLeft(Success(): VerificationResult) {
                     case (fatalResult: FatalResult, _) => fatalResult
                     case (intermediateResult, (s1, pcs, ff1)) => /* [BRANCH-PARALLELISATION] ff1 */
-                      val s2 = s1.copy(invariantContexts = sLeftover.h +: s1.invariantContexts)
+                      val s2 = s1.copy(invariantContexts = (s0.isImprecise, sLeftover.isImprecise, sLeftover.h, sLeftover.optimisticHeap) +: s1.invariantContexts)
                       intermediateResult && executionFlowController.locally(s2, v1)((s3, v2) => {
   //                    v2.decider.declareAndRecordAsFreshFunctions(ff1 -- v2.decider.freshFunctions) /* [BRANCH-PARALLELISATION] */
                         v2.decider.assume(pcs.assumptions)
@@ -344,7 +337,6 @@ object executor extends ExecutionRules with Immutable {
                         if (v2.decider.checkSmoke())
                           Success()
                         else {
-                          // This is running the loop body i think, but why is this here
                           execs(s3, stmts, v2)((s4, v3) => {
                             v3.decider.prover.comment("Loop head block: Follow loop-internal edges")
                             follows(s4, block, sortedEdges, WhileFailed, v3)(Q)})}})}})}))
