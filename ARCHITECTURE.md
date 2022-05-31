@@ -248,7 +248,10 @@ It does this by first transforming the asserted formula to conjunctive normal
 form, or CNF, and then calling [check](#check) on each conjunct. If `check`
 returns true, we remove the conjunct from the formula.
 
-![assertgv diagram](assertgv_architecture.png)
+<p align="center">
+<img src="assertgv_architecture.png" alt="A diagram describing how assertgv
+interacts with diff and checkgv" width="404"/>
+</p>
 
 ### Position Tracking
 
