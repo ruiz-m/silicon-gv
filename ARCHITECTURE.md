@@ -16,22 +16,22 @@ for detailed descriptions of all the symbolic evaluation rules. Here I've
 listed (very) short summaries of all of the four types of rules that should be
 sufficient for understanding the rest of this document.
 
-#### Exec
+* __Exec__
 
 Used for symbolically running Viper terms which have side effects, such as
 method calls or loops.
 
-#### Eval
+* __Eval__
 
 Used for evaluating Viper expressions.
 
-#### Consume
+* __Consume__
 
 You can think of this as a way to remove permissions, generally speaking, or
 test if we have some permissions by attempting to remove them. This is where
 most of the interesting run-time checking functionality is.
 
-#### Produce
+* __Produce__
 
 This is the opposite of consume. It creates permissions and adds them to the
 symbolic state.
@@ -54,9 +54,7 @@ permissions it uses.
 In a gradual setting, the presence of `?`, or imprecision, can account for
 missing framing permissions.
 
-## Optimistic Assumption
-
-### assertgv
+### Assertgv
 
 The function for gradual assertions.
 
@@ -86,12 +84,9 @@ Run-time checking happens roughly whenever optimistic assumption happens,
 in order to ensure soundness. To figure out where and why run-time checks
 are happening, look for situations where the state has become imprecise
 (so we're allowed to do optimistic assumption) and where we reach a case
-where we have to rely on run-time information to verify specifications.
+where we have to rely on run-time information to verify specifications
+(an optimistic assumption has happened).
 </b>
-
-Here's a diagram of the whole system:
-
-INSERT DRAWIO DIAGRAM HERE
 
 ### Overview
 
@@ -252,6 +247,8 @@ a minimal formula from the one given to [assertgv](#assertgv).
 It does this by first transforming the asserted formula to conjunctive normal
 form, or CNF, and then calling [check](#check) on each conjunct. If `check`
 returns true, we remove the conjunct from the formula.
+
+![assertgv diagram](assertgv_architecture.png)
 
 ### Position Tracking
 
