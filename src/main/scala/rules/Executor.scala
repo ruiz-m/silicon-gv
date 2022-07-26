@@ -12,7 +12,6 @@ import viper.silver.verifier.{CounterexampleTransformer, PartialVerificationErro
 import viper.silver.verifier.errors._
 import viper.silver.verifier.reasons._
 import viper.silver.{ast, cfg}
-import viper.silver.ast.utils.conjunctExps
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
@@ -363,11 +362,8 @@ object executor extends ExecutionRules with Immutable {
                 .collect{case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition}
                 .distinct
 
-            // turn the sequence of edge conditions into one 'and' expression
-            val conjunctedEdgeConditions = conjunctExps(edgeConditions)
-
             val edgeConditionsForFraming =
-              ast.EqCmp(conjunctedEdgeConditions, conjunctedEdgeConditions)()
+              ast.EqCmp(edgeConditions.head, edgeConditions.head)()
 
             val conditionsAndInvariants = invs :+ edgeConditionsForFraming
 
