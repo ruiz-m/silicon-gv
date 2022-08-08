@@ -1,0 +1,25 @@
+name: Executor
+on: [ workflow_dispatch ]
+permissions:
+  contents: read
+jobs:
+  build:
+    name: Build Verifier @ Latest Version
+    timeout-minutes: 4200
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          repository: 'gradual-verification/gvc0'
+          path: './gvc0'
+      - uses: actions/checkout@v3
+        with:
+          repository: 'gradual-verification/silver-gv'
+          path: './silver'
+      - name: Symlink
+        run: ln -s . ./gvc0/silicon
+      - name: Assembly
+        run: cd gvc0 && sbt assembly
+      - name: Execution
+        run: cd gvc0 && export VERSION=$(git rev-parse --short=6 HEAD)-$(cd ../ && git rev-parse --short=6 HEAD)-$(cd ../silver && git rev-parse --short=6 HEAD) && java -Xss30M -Xmx8G -jar target/scala-2.12/gvc0-assembly-0.1.0-SNAPSHOT.jar --config=./study/config/nuc.xml --execute --nickname=${{ runner.name }} --db-url=${{ secrets.DB_URL }} --db-user=${{ secrets.DB_USER }} --db-pass=${{ secrets.DB_PASSWORD }} --version="$VERSION"
