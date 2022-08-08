@@ -270,7 +270,12 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
         profilingInfo.incrementEliminatedConjuncts
 
-        Q(s, ch.snap, v)
+        if (s.gatherFrame) {
+          chunkSupporter.produce(s, s.frameArgHeap, ch, v)((s1, fh, v1) =>
+            Q(s.copy(frameArgHeap = fh), ch.snap, v1))
+        } else {
+          Q(s, ch.snap, v)
+        }
 
       // should never reach this case
       // TODO: ASK JENNA; err, we ARE reaching this case... is this a problem?
@@ -286,7 +291,12 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
             profilingInfo.incrementEliminatedConjuncts
 
-            Q(s, ch.snap, v)
+            if (s.gatherFrame) {
+              chunkSupporter.produce(s, s.frameArgHeap, ch, v)((s1, fh, v1) =>
+                Q(s.copy(frameArgHeap = fh), ch.snap, v1))
+            } else {
+              Q(s, ch.snap, v)
+            }
 
           // this is the eval case for adding runtime checks
           case _ if s.isImprecise && addToOh =>
@@ -326,8 +336,14 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                   runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())())
                 }
 
-                chunkSupporter.produce(s2, s2.optimisticHeap, ch, v)((s3, oh2, v2) =>
-                  Q(s.copy(optimisticHeap = oh2), snap, v2))
+                if (s.gatherFrame) {
+                  chunkSupporter.produce(s2, s2.frameArgHeap, ch, v)((s3, fh, v3) =>
+                    chunkSupporter.produce(s3, s3.optimisticHeap, ch, v3)((s4, oh4, v4) =>
+                      Q(s.copy(optimisticHeap = oh4, frameArgHeap = fh), snap, v4)))
+                } else {
+                  chunkSupporter.produce(s2, s2.optimisticHeap, ch, v)((s3, oh3, v3) =>
+                    Q(s.copy(optimisticHeap = oh3), snap, v3))
+                }
               }
 
               // TODO: ASK JENNA; should we be counting conjuncts here?

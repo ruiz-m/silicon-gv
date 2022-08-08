@@ -210,10 +210,11 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                 profilingInfo.incrementEliminatedConjuncts
 
                 val s6 = s5.copy(g = gIns,
+                                 frameArgHeap = Heap(),
                                  oldStore = Some(s5.g),
                                  oldHeaps = s5.oldHeaps + (Verifier.PRE_HEAP_LABEL -> s5.h) + (Verifier.PRE_OPTHEAP_LABEL -> s5.optimisticHeap),
                                  h = h1,
-                                 optimisticHeap = oh1,
+                                 optimisticHeap = oh1 + s5.frameArgHeap,
                                  needConditionFramingUnfold = true)
                           .setConstrainable(constrainableWildcards, false)
                 // we produce the body (this is an unfold?)
@@ -232,10 +233,11 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
                 profilingInfo.incrementEliminatedConjuncts
 
                 val s6 = s5.copy(g = gIns,
+                                 frameArgHeap = Heap(),
                                  oldStore = Some(s5.g),
                                  oldHeaps = s5.oldHeaps + (Verifier.PRE_HEAP_LABEL -> s5.h) + (Verifier.PRE_OPTHEAP_LABEL -> s5.optimisticHeap),
                                  h = h1,
-                                 optimisticHeap = oh1)
+                                 optimisticHeap = oh1 + s5.frameArgHeap)
                           .setConstrainable(constrainableWildcards, false)
                 produce(s6, toSf(snap2), body, pve, v2)((s7, v3) => {
                   //println(s"Unsetting unfold AST node in state: ${s7.foldOrUnfoldAstNode}")
@@ -255,6 +257,7 @@ object predicateSupporter extends PredicateSupportRules with Immutable {
             profilingInfo.incrementEliminatedConjuncts
 
             val s5 = s4.copy(g = gIns,
+                             frameArgHeap = Heap(),
                              oldStore = Some(s4.g),
                              oldHeaps = s4.oldHeaps + (Verifier.PRE_HEAP_LABEL -> s4.h) + (Verifier.PRE_OPTHEAP_LABEL -> s4.optimisticHeap),
                              h = h1,

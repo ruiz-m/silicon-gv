@@ -1199,7 +1199,7 @@ object evaluator extends EvaluationRules with Immutable {
       /* Short-circuiting evaluation of AND */
       case ae @ ast.And(_, _) =>
         val flattened = flattenOperator(ae, {case ast.And(e0, e1) => Seq(e0, e1)})
-        evalSeqShortCircuit(And, s, flattened, pve, v)(Q)
+        evalSeqShortCircuitPc(And, s, flattened, pve, v, generateChecks)(Q)
 
 
       /* Strict evaluation of OR */
@@ -1209,7 +1209,7 @@ object evaluator extends EvaluationRules with Immutable {
       /* Short-circuiting evaluation of OR */
       case oe @ ast.Or(_, _) =>
         val flattened = flattenOperator(oe, {case ast.Or(e0, e1) => Seq(e0, e1)})
-        evalSeqShortCircuit(Or, s, flattened, pve, v)(Q)
+        evalSeqShortCircuitPc(Or, s, flattened, pve, v, generateChecks)(Q)
 
       /*
       case implies @ ast.Implies(e0, e1) =>
@@ -2346,6 +2346,51 @@ object evaluator extends EvaluationRules with Immutable {
                 sys.error(s"Unexpected join data entries $entries")
             }(Q)
       }})
+  }
+
+  /* Evaluate a sequence of expressions in Order
+   * The constructor determines when the evaluation stops
+   * Only Or and And are supported for the constructor
+   */
+  private def evalSeqShortCircuitPc(constructor: Seq[Term] => Term,
+                                  s: State,
+                                  exps: Seq[ast.Exp],
+                                  pve: PartialVerificationError,
+                                  v: Verifier,
+                                  generateChecks: Boolean)
+                                 (Q: (State, Term, Verifier) => VerificationResult)
+  : VerificationResult = {
+    assert(
+      constructor == Or || constructor == And,
+      "Only Or and And are supported as constructors for evalSeqShortCircuit")
+
+    assert(exps.nonEmpty, "Empty sequence of expressions not allowed")
+
+    type brFun = (State, Verifier) => VerificationResult
+
+    // TODO: Find out and document why swapIfAnd is needed
+    val (stop, swapIfAnd) =
+      if (constructor == Or) (True(), (a: brFun, b: brFun) => (a, b))
+      else (False(), (a: brFun, b: brFun) => (b, a))
+
+    evalpc(s, exps.head, pve, v, generateChecks)((s1, t0, v1) => {
+      t0 match {
+        case _ if exps.tail.isEmpty => Q(s1, t0, v1) // Done, if no expressions left (necessary)
+        case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
+        case _ =>
+          joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
+            brancher.branch(s2, t0, exps.head, None, v2, true) _ tupled swapIfAnd(
+              (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
+              (s3, v3) => evalSeqShortCircuitPc(constructor, s3, exps.tail, pve, v3, generateChecks)(QB))
+          ) { case Seq(ent) =>
+            (ent.s, ent.data)
+          case Seq(ent1, ent2) =>
+            (ent1.s.merge(ent2.s), constructor(Seq(ent1.data, ent2.data)))
+          case entries =>
+            sys.error(s"Unexpected join data entries $entries")
+          }(Q)
+      }
+    })
   }
 
   private[silicon] case object FromShortCircuitingAnd extends Info {

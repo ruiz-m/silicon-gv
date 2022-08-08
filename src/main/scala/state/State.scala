@@ -23,6 +23,8 @@ final case class State(g: Store = Store(),
 
                        isImprecise: Boolean = false,
                        optimisticHeap: Heap = Heap(),
+                       gatherFrame: Boolean = false,
+                       frameArgHeap: Heap = Heap(),
 
                        parallelizeBranches: Boolean = false,
 
@@ -143,6 +145,7 @@ object State {
       /* Decompose state s1 */
       case State(g1, oldStore1, h1, oldHeaps1,
                  isImprecise, optimisticHeap1,
+                 gatherFrame1, frameArgHeap1,
                  parallelizeBranches1,
                  recordVisited1, visited1,
                  methodCfg1, invariantContexts1,
@@ -171,6 +174,7 @@ object State {
           // stick around for that long?
           case State(`g1`, `oldStore1`, `h1`, `oldHeaps1`,
                      `isImprecise`, `optimisticHeap1`,
+                     `gatherFrame1`, `frameArgHeap1`,
                      `parallelizeBranches1`,
                      `recordVisited1`, `visited1`,
                      `methodCfg1`, `invariantContexts1`,
