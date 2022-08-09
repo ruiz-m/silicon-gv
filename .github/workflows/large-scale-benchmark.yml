@@ -9,17 +9,17 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/checkout@v3
         with:
           repository: 'gradual-verification/gvc0'
           path: './gvc0'
           ssh-key: ${{ secrets.GVC0_DEPLOY_PRIVATE_KEY }}
       - uses: actions/checkout@v3
         with:
+          path: './gvc0/silicon'
+      - uses: actions/checkout@v3
+        with:
           repository: 'gradual-verification/silver-gv'
-          path: './silver'
-      - name: Symlink
-        run: ln -s . ./gvc0/silicon
+          path: './gvc0/silicon/silver'
       - name: Assembly
         run: cd gvc0 && sbt assembly
       - name: Execution
