@@ -13,7 +13,7 @@ jobs:
         with:
           repository: 'gradual-verification/gvc0'
           path: './gvc0'
-          token: '{{ secrets.GVC0_PAT }}'
+          ssh-key: '{{ secrets.GVC0_DEPLOY_PRIVATE_KEY }}'
       - uses: actions/checkout@v3
         with:
           repository: 'gradual-verification/silver-gv'
