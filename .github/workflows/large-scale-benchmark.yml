@@ -1,4 +1,4 @@
-name: Executor
+name: Executor - Mass Data Collection
 on: [ workflow_dispatch ]
 permissions:
   contents: read
@@ -13,6 +13,7 @@ jobs:
         with:
           repository: 'gradual-verification/gvc0'
           path: './gvc0'
+          token: '{{ secrets.GVC0_PAT }}'
       - uses: actions/checkout@v3
         with:
           repository: 'gradual-verification/silver-gv'
