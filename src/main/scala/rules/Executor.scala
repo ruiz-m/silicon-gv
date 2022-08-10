@@ -722,22 +722,10 @@ object executor extends ExecutionRules with Immutable {
               s2.smCache
             }
 
-            /* makes sure all frameArgHeap chunks have write perm, computation in eval will merge duplicates to same set adding perms
-            *  which are then greater than a write perm.
-            */
-            val fah: Heap = s2.frameArgHeap.values.foldLeft(Heap()) { (currHeap, chunk) =>
-              chunk match {
-                case ch : NonQuantifiedChunk if v2.decider.check(IsPositive(ch.perm), Verifier.config.checkTimeout()) => {
-                  currHeap + ch.withPerm(FullPerm())
-                }
-                case _ => currHeap
-              }
-            }
-
             v2.decider.assertgv(s2.isImprecise, IsPositive(tPerm)) { //The IsPositive check is redundant
               case true =>
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs
-                predicateSupporter.unfold(s2.copy(frameArgHeap = fah, smCache = smCache1), predicate, Some(unfold), tArgs, tPerm, wildcards, pve, v2, pa)(Q)
+                predicateSupporter.unfold(s2.copy(smCache = smCache1), predicate, Some(unfold), tArgs, tPerm, wildcards, pve, v2, pa)(Q)
               case false =>
                 createFailure(pve dueTo NegativePermission(ePerm), v2, s2)
             } match {
