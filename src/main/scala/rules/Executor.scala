@@ -15,6 +15,7 @@ import viper.silver.{ast, cfg}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
+import viper.silicon.interfaces.state.{NonQuantifiedChunk}
 import viper.silicon.resources.FieldID
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -705,8 +706,9 @@ object executor extends ExecutionRules with Immutable {
       case unfold @ ast.Unfold(ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), ePerm)) =>
         val predicate = Verifier.program.findPredicate(predicateName)
         val pve = UnfoldFailed(unfold)
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-          eval(s1, ePerm, pve, v1)((s2, tPerm, v2) => {
+        val sFrame = s.copy(gatherFrame = true)
+        evals(sFrame, eArgs, _ => pve, v)((s1, tArgs, v1) =>
+          eval(s1.copy(gatherFrame = false), ePerm, pve, v1)((s2, tPerm, v2) => {
 
             val smCache1 = if (s2.qpPredicates.contains(predicate)) {
               val (relevantChunks, _) =
@@ -719,6 +721,7 @@ object executor extends ExecutionRules with Immutable {
             } else {
               s2.smCache
             }
+
             v2.decider.assertgv(s2.isImprecise, IsPositive(tPerm)) { //The IsPositive check is redundant
               case true =>
                 val wildcards = s2.constrainableARPs -- s1.constrainableARPs

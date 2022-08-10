@@ -120,8 +120,9 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                      (Q: (State, Heap, Option[Term], Verifier) => VerificationResult)
                      : VerificationResult = {
     var s1 = s.copy(h = h)
-    if (consolidate)
+    if (consolidate) {
       s1 = stateConsolidator.consolidate(s.copy(h = h), v)
+    }
     consumeGreedy(s1, s1.h, resource, args, perms, v) match {
       case (Complete(), s2, h2, optCh2) =>
         Q(s2.copy(h = s.h), h2, optCh2.map(_.snap), v)
@@ -270,7 +271,15 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
         profilingInfo.incrementEliminatedConjuncts
 
-        Q(s, ch.snap, v)
+        if (s.gatherFrame) {
+          findChunk[NonQuantifiedChunk](s.frameArgHeap.values, id, args, v) match {
+            case Some(c) if v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout()) =>
+              Q(s, ch.snap, v)
+            case _ => Q(s.copy(frameArgHeap = s.frameArgHeap + ch), ch.snap, v)
+          }
+        } else {
+          Q(s, ch.snap, v)
+        }
 
       // should never reach this case
       // TODO: ASK JENNA; err, we ARE reaching this case... is this a problem?
@@ -286,7 +295,15 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
 
             profilingInfo.incrementEliminatedConjuncts
 
-            Q(s, ch.snap, v)
+            if (s.gatherFrame) {
+              findChunk[NonQuantifiedChunk](s.frameArgHeap.values, id, args, v) match {
+                case Some(c) if v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout()) =>
+                  Q(s, ch.snap, v)
+                case _ => Q(s.copy(frameArgHeap = s.frameArgHeap + ch), ch.snap, v)
+              }
+            } else {
+              Q(s, ch.snap, v)
+            }
 
           // this is the eval case for adding runtime checks
           case _ if s.isImprecise && addToOh =>
@@ -326,8 +343,16 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                   runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())())
                 }
 
-                chunkSupporter.produce(s2, s2.optimisticHeap, ch, v)((s3, oh2, v2) =>
-                  Q(s.copy(optimisticHeap = oh2), snap, v2))
+                if (s2.gatherFrame) {
+                  findChunk[NonQuantifiedChunk](s2.frameArgHeap.values, id, args, v) match {
+                    case Some(c) if v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout()) =>
+                      /* Shouldn't make it to this case based on functionality, but here for safety */
+                      Q(s.copy(optimisticHeap = s2.optimisticHeap + ch), snap, v)
+                    case _ => Q(s.copy(optimisticHeap = s2.optimisticHeap + ch, frameArgHeap = s2.frameArgHeap + ch), snap, v)
+                  }
+                } else {
+                  Q(s.copy(optimisticHeap = s2.optimisticHeap + ch), snap, v)
+                }
               }
 
               // TODO: ASK JENNA; should we be counting conjuncts here?
