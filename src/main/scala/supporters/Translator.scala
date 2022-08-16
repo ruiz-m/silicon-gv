@@ -148,22 +148,20 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
   }
 
   private def selectShortestField(candidateFields: Seq[ast.Exp]): Option[ast.Exp] = {
-    
     if (candidateFields.exists(f => f.isInstanceOf[ast.FieldAccess])) {
       candidateFields.foldRight[Option[ast.Exp]](None)((currentField, shortestField) =>
           shortestField match {
             case None => Some(currentField)
-            case Some(shortestFieldUnwrapped) => (currentField, shortestFieldUnwrapped) match {
-              case (ast.FieldAccess(_, ast.Field(name1, _)),
-                ast.FieldAccess(_, ast.Field(name2, _))) => {
-                  if (name1.length < name2.length) {
-                    Some(currentField)
-                  } else {
-                    Some(shortestFieldUnwrapped)
-                  }
+            case Some(shortestFieldUnwrapped) => {
+              val cfArray = currentField.toString().split('.')
+              val sfArray = shortestFieldUnwrapped.toString().split('.')
+              if (cfArray.length < sfArray.length) {
+                Some(currentField)
+              } else {
+                Some(shortestFieldUnwrapped)
               }
-              case _ => Some(shortestFieldUnwrapped)
-          }})
+            }
+          })
     } else if (!candidateFields.isEmpty) {
       // in this case, we only have a list of receivers, so we select one
       // (they should all be equal in length!)
