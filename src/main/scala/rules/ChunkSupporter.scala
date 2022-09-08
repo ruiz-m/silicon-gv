@@ -345,6 +345,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                       runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())())
                     }
 
+                    v.decider.assume(args.head !== Null())
+
                     if (s2.gatherFrame) {
                       findChunk[NonQuantifiedChunk](s2.frameArgHeap.values, id, args, v) match {
                         case Some(c) if v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout()) =>
