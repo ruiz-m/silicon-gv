@@ -305,21 +305,23 @@ object producer extends ProductionRules with Immutable {
  *        produceR(s1.copy(g = s1.g + g1), sf, body, pve, v1)(Q))
  */
       case ast.FieldAccessPredicate(ast.FieldAccess(eRcvr, field), perm) =>
-        evalpc(s, eRcvr, pve, v, false)((s1, tRcvr, v1) =>
+        val s0 = s.copy(generateChecks = false)
+        evalpc(s0, eRcvr, pve, v, false)((s1, tRcvr, v1) =>
           evalpc(s1, perm, pve, v1, false)((s2, tPerm, v2) => {
-            if(chunkSupporter.inHeap(s2.h, s2.h.values, field, Seq(tRcvr), v2)) {
+            val s2_0 = s2.copy(generateChecks = true)
+            if(chunkSupporter.inHeap(s2_0.h, s2_0.h.values, field, Seq(tRcvr), v2)) {
               // NEED: Actually because it's in the heap, but don't know how to do that yet
-              createFailure(pve dueTo NegativePermission(perm), v2, s2) }
+              createFailure(pve dueTo NegativePermission(perm), v2, s2_0) }
             else {
               val snap = sf(v2.symbolConverter.toSort(field.typ), v2)
-              val gain = PermTimes(tPerm, s2.permissionScalingFactor)
+              val gain = PermTimes(tPerm, s2_0.permissionScalingFactor)
 /*            if (s2.qpFields.contains(field)) {
  *            val trigger = (sm: Term) => FieldTrigger(field.name, sm, tRcvr)
  *            quantifiedChunkSupporter.produceSingleLocation(s2, field, Seq(`?r`), Seq(tRcvr), snap, gain, trigger, v2)(Q)
  *          } else {
  */
               val ch = BasicChunk(FieldID, BasicChunkIdentifier(field.name), Seq(tRcvr), snap, gain)
-              chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
+              chunkSupporter.produce(s2_0, s2_0.h, ch, v2)((s3, h3, v3) => {
                 v3.decider.assume(tRcvr !== Null())
                 Q(s3.copy(h = h3), v3)})
             }
@@ -327,16 +329,18 @@ object producer extends ProductionRules with Immutable {
 
       case ast.PredicateAccessPredicate(ast.PredicateAccess(eArgs, predicateName), perm) =>
         val predicate = Verifier.program.findPredicate(predicateName)
-        evalspc(s, eArgs, _ => pve, v, false)((s1, tArgs, v1) =>
+        val s0 = s.copy(generateChecks = false)
+        evalspc(s0, eArgs, _ => pve, v, false)((s1, tArgs, v1) =>
           evalpc(s1, perm, pve, v1, false)((s2, tPerm, v2) => {
-            if (chunkSupporter.inHeap(s2.h, s2.h.values, predicate, tArgs, v2)) {
+            val s2_0 = s2.copy(generateChecks = true)
+            if (chunkSupporter.inHeap(s2_0.h, s2_0.h.values, predicate, tArgs, v2)) {
               // Actually because it's in the heap, but don't know how to do that yet
-              createFailure(pve dueTo NegativePermission(perm), v2, s2) }
+              createFailure(pve dueTo NegativePermission(perm), v2, s2_0) }
             else {
               val snap = sf(
                 predicate.body.map(v2.snapshotSupporter.optimalSnapshotSort(_, Verifier.program)._1)
                             .getOrElse(sorts.Snap), v2)
-              val gain = PermTimes(tPerm, s2.permissionScalingFactor)
+              val gain = PermTimes(tPerm, s2_0.permissionScalingFactor)
 /*            if (s2.qpPredicates.contains(predicate)) {
               val formalArgs = s2.predicateFormalVarMap(predicate)
               val trigger = (sm: Term) => PredicateTrigger(predicate.name, sm, tArgs)
@@ -346,7 +350,7 @@ object producer extends ProductionRules with Immutable {
 */
               val snap1 = snap.convert(sorts.Snap)
               val ch = BasicChunk(PredicateID, BasicChunkIdentifier(predicate.name), tArgs, snap1, gain)
-              chunkSupporter.produce(s2, s2.h, ch, v2)((s3, h3, v3) => {
+              chunkSupporter.produce(s2_0, s2_0.h, ch, v2)((s3, h3, v3) => {
                 /* if (Verifier.config.enablePredicateTriggersOnInhale() && s3.functionRecorder == NoopFunctionRecorder) {
                   v3.decider.assume(App(Verifier.predicateData(predicate).triggerFunction, snap1 +: tArgs))
                 } */
@@ -482,9 +486,11 @@ object producer extends ProductionRules with Immutable {
       /* Any regular expressions, i.e. boolean and arithmetic. */
       case _ =>
         v.decider.assume(sf(sorts.Snap, v) === Unit) /* TODO: See comment for case ast.Implies above */
-        evalpc(s, a, pve, v, false)((s1, t, v1) => {
+        val s0 = s.copy(generateChecks = false)
+        evalpc(s0, a, pve, v, false)((s1, t, v1) => {
+          val s2 = s1.copy(generateChecks = true)
           v1.decider.assume(t)
-          Q(s1, v1)})
+          Q(s2, v1)})
     }
 
     produced

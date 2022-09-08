@@ -281,8 +281,7 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
           Q(s, ch.snap, v)
         }
 
-      // should never reach this case
-      // TODO: ASK JENNA; err, we ARE reaching this case... is this a problem?
+      // TODO: should this case be moved to when the chunk cannot be found in the oh?
       case _ if v.decider.checkSmoke() =>
 
         profilingInfo.incrementEliminatedConjuncts
@@ -305,53 +304,65 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
               Q(s, ch.snap, v)
             }
 
-          // this is the eval case for adding runtime checks
+          // this is the eval case for adding run-time checks
           case _ if s.isImprecise && addToOh =>
             resource match {
               case f: ast.Field => {
-                val snap = v.decider.fresh(s"${args.head}.$id", v.symbolConverter.toSort(f.typ))
-                val ch = BasicChunk(FieldID, BasicChunkIdentifier(f.name), args, snap, FullPerm())
-                val s2 = s.copy(optimisticHeap = oh)
+                v.decider.assertgv(s.isImprecise, args.head !== Null()) {
+                  case true =>
+                    val snap = v.decider.fresh(s"${args.head}.$id", v.symbolConverter.toSort(f.typ))
+                    val ch = BasicChunk(FieldID, BasicChunkIdentifier(f.name), args, snap, FullPerm())
+                    val s2 = s.copy(optimisticHeap = oh)
 
-                val runtimeCheckAstNode: CheckPosition =
-                  (s2.methodCallAstNode, s2.foldOrUnfoldAstNode, s2.loopPosition) match {
-                    case (None, None, None) => CheckPosition.GenericNode(runtimeCheckFieldTarget)
-                    case (Some(methodCallAstNode), None, None) => CheckPosition.GenericNode(methodCallAstNode)
-                    case (None, Some(foldOrUnfoldAstNode), None) => CheckPosition.GenericNode(foldOrUnfoldAstNode)
-                    case (None, None, Some(loopPosition)) => loopPosition
-                    case _ => sys.error("Conflicting positions found while adding runtime check!")
-                  }
+                    val runtimeCheckAstNode: CheckPosition =
+                      (s2.methodCallAstNode, s2.foldOrUnfoldAstNode, s2.loopPosition) match {
+                        case (None, None, None) => CheckPosition.GenericNode(runtimeCheckFieldTarget)
+                        case (Some(methodCallAstNode), None, None) => CheckPosition.GenericNode(methodCallAstNode)
+                        case (None, Some(foldOrUnfoldAstNode), None) => CheckPosition.GenericNode(foldOrUnfoldAstNode)
+                        case (None, None, Some(loopPosition)) => loopPosition
+                        case _ => sys.error("Conflicting positions found while adding runtime check!")
+                      }
 
-                val (g, tH, tOH) = s2.oldStore match { /* this match sequence shouldn't be necessary based on currently functionality, but here for safety - JW */
-                  case Some(g) => (g, s2.h + s2.oldHeaps(Verifier.PRE_HEAP_LABEL), s2.optimisticHeap + s2.oldHeaps(Verifier.PRE_OPTHEAP_LABEL))
-                  case None => (s2.g, s2.h, s2.optimisticHeap)
-                }
-                val translatedArgs: Seq[ast.Exp] =
-                  args.map(tArg => new Translator(s2.copy(g = g, h = tH, optimisticHeap = tOH), v.decider.pcs).translate(tArg) match {
-                    case None => sys.error("Error translating! Exiting safely.")
-                    case Some(expr) => expr
-                  })
+                    val (g, tH, tOH) = s2.oldStore match {
+                      /* this match sequence shouldn't be necessary based on currently functionality, but here for safety - JW */
+                      case Some(g) => (g, s2.h + s2.oldHeaps(Verifier.PRE_HEAP_LABEL), s2.optimisticHeap + s2.oldHeaps(Verifier.PRE_OPTHEAP_LABEL))
+                      case None => (s2.g, s2.h, s2.optimisticHeap)
+                    }
+                    val translatedArgs: Seq[ast.Exp] =
+                      args.map(tArg => new Translator(s2.copy(g = g, h = tH, optimisticHeap = tOH), v.decider.pcs).translate(tArg) match {
+                        case None => sys.error("Error translating! Exiting safely.")
+                        case Some(expr) => expr
+                      })
 
-                if (s2.generateChecks) {
-                  runtimeChecks.addChecks(runtimeCheckAstNode,
-                    ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())(),
-                    viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
-                      v.decider.pcs.branchConditionsAstNodes,
-                      v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
-                    runtimeCheckFieldTarget,
-                    s2.forFraming)
-                  runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())())
-                }
+                    if (s2.generateChecks) {
+                      runtimeChecks.addChecks(runtimeCheckAstNode,
+                        ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())(),
+                        viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
+                          v.decider.pcs.branchConditionsAstNodes,
+                          v.decider.pcs.branchConditionsOrigins).map(bc => BranchCond(bc._1, bc._2, bc._3)),
+                        runtimeCheckFieldTarget,
+                        s2.forFraming)
+                      runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())())
+                    }
 
-                if (s2.gatherFrame) {
-                  findChunk[NonQuantifiedChunk](s2.frameArgHeap.values, id, args, v) match {
-                    case Some(c) if v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout()) =>
-                      /* Shouldn't make it to this case based on functionality, but here for safety */
+                    v.decider.assume(args.head !== Null())
+
+                    if (s2.gatherFrame) {
+                      findChunk[NonQuantifiedChunk](s2.frameArgHeap.values, id, args, v) match {
+                        case Some(c) if v.decider.check(IsPositive(c.perm), Verifier.config.checkTimeout()) =>
+                          /* Shouldn't make it to this case based on functionality, but here for safety */
+                          Q(s.copy(optimisticHeap = s2.optimisticHeap + ch), snap, v)
+                        case _ => Q(s.copy(optimisticHeap = s2.optimisticHeap + ch, frameArgHeap = s2.frameArgHeap + ch), snap, v)
+                      }
+                    } else {
                       Q(s.copy(optimisticHeap = s2.optimisticHeap + ch), snap, v)
-                    case _ => Q(s.copy(optimisticHeap = s2.optimisticHeap + ch, frameArgHeap = s2.frameArgHeap + ch), snap, v)
-                  }
-                } else {
-                  Q(s.copy(optimisticHeap = s2.optimisticHeap + ch), snap, v)
+                    }
+
+                  case false =>
+                    createFailure(ve, v, s, true).withLoad(args)
+
+                } match {
+                  case (verificationResult, _) => verificationResult
                 }
               }
 
@@ -367,34 +378,35 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
               case _ => /* should never reach this case */
                 createFailure(ve, v, s, true).withLoad(args)
             }
-          // this is the evalpc case for adding runtime checks
-          case _ if s.isImprecise && !addToOh =>
+
+          // this is the evalpc case for consume
+          case _ if s.isImprecise && !addToOh && s.generateChecks =>
             resource match {
               case f: ast.Field => {
-                val snap = v.decider.fresh(s"${args.head}.$id", v.symbolConverter.toSort(f.typ))
+                v.decider.assertgv(s.isImprecise, args.head !== Null()) {
+                  case true => {
+                    val snap = v.decider.fresh(s"${args.head}.$id", v.symbolConverter.toSort(f.typ))
 
-                if (generateChecks) {
+                    val runtimeCheckAstNode: CheckPosition =
+                      (s.methodCallAstNode, s.foldOrUnfoldAstNode, s.loopPosition) match {
+                        case (None, None, None) => CheckPosition.GenericNode(runtimeCheckFieldTarget)
+                        case (Some(methodCallAstNode), None, None) => CheckPosition.GenericNode(methodCallAstNode)
+                        case (None, Some(foldOrUnfoldAstNode), None) => CheckPosition.GenericNode(foldOrUnfoldAstNode)
+                        case (None, None, Some(loopPosition)) => loopPosition
+                        case _ => sys.error("Conflicting positions found while adding runtime check!")
+                      }
 
-                  val runtimeCheckAstNode: CheckPosition =
-                    (s.methodCallAstNode, s.foldOrUnfoldAstNode, s.loopPosition) match {
-                      case (None, None, None) => CheckPosition.GenericNode(runtimeCheckFieldTarget)
-                      case (Some(methodCallAstNode), None, None) => CheckPosition.GenericNode(methodCallAstNode)
-                      case (None, Some(foldOrUnfoldAstNode), None) => CheckPosition.GenericNode(foldOrUnfoldAstNode)
-                      case (None, None, Some(loopPosition)) => loopPosition
-                      case _ => sys.error("Conflicting positions found while adding runtime check!")
+                    val (g, tH, tOH) = s.oldStore match {
+                      /* Heap/OH part shouldn't be necessary based on currently functionality, but here for safety - JW */
+                      case Some(g) => (g, s.h + s.oldHeaps(Verifier.PRE_HEAP_LABEL), s.optimisticHeap + s.oldHeaps(Verifier.PRE_OPTHEAP_LABEL))
+                      case None => (s.g, s.h, s.optimisticHeap)
                     }
+                    val translatedArgs: Seq[ast.Exp] =
+                      args.map(tArg => new Translator(s.copy(g = g, h = tH, optimisticHeap = tOH), v.decider.pcs).translate(tArg) match {
+                        case None => sys.error("Error translating! Exiting safely.")
+                        case Some(expr) => expr
+                      })
 
-                  val (g, tH, tOH) = s.oldStore match { /* Heap/OH part shouldn't be necessary based on currently functionality, but here for safety - JW */
-                    case Some(g) => (g, s.h + s.oldHeaps(Verifier.PRE_HEAP_LABEL), s.optimisticHeap + s.oldHeaps(Verifier.PRE_OPTHEAP_LABEL))
-                    case None => (s.g, s.h, s.optimisticHeap)
-                  }
-                  val translatedArgs: Seq[ast.Exp] =
-                    args.map(tArg => new Translator(s.copy(g = g, h = tH, optimisticHeap = tOH), v.decider.pcs).translate(tArg) match {
-                      case None => sys.error("Error translating! Exiting safely.")
-                      case Some(expr) => expr
-                    })
-
-                  if (s.generateChecks) {
                     runtimeChecks.addChecks(runtimeCheckAstNode,
                       ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())(),
                       viper.silicon.utils.zip3(v.decider.pcs.branchConditionsSemanticAstNodes,
@@ -403,23 +415,47 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                       runtimeCheckFieldTarget,
                       s.forFraming)
                     runtimeCheckFieldTarget.addCheck(ast.FieldAccessPredicate(ast.FieldAccess(translatedArgs.head, f)(), ast.FullPerm()())())
+
+                    Q(s.copy(madeOptimisticAssumptions = true), snap, v)
                   }
-                  // TODO: ASK JENNA; if we don't generate checks here, should
-                  // we increment the number of eliminated conjuncts?
-                  //
-                  // (in the 'else' case)
-                } else {
 
-                  profilingInfo.incrementEliminatedConjuncts
+                  case false => createFailure(ve, v, s, true).withLoad(args)
+
+                } match {
+                  case (verificationResult, _) => verificationResult
                 }
-
-                Q(s.copy(madeOptimisticAssumptions = true), snap, v)
               }
-              // TODO: ASK JENNA; should we be counting eliminated conjuncts here?
+
               case p: ast.Predicate => {
                 val snap = v.decider.fresh(s"$id(${args.mkString(",")})", sorts.Snap)
                 Q(s, snap, v)
               }
+
+              case _ => /* should never reach this case */
+                createFailure(ve, v, s, true).withLoad(args)
+            }
+
+          // this is the evalpc case for produce
+          case _ if s.isImprecise && !addToOh && !s.generateChecks =>
+            resource match {
+              case f: ast.Field => {
+                val snap = v.decider.fresh(s"${args.head}.$id", v.symbolConverter.toSort(f.typ))
+
+                if (!(s.needConditionFramingProduce &&
+                      s.needConditionFramingUnfold)) {
+                  profilingInfo.incrementEliminatedConjuncts
+                }
+
+                v.decider.assume(args.head !== Null())
+
+                Q(s.copy(madeOptimisticAssumptions = true), snap, v)
+              }
+
+              case p: ast.Predicate => {
+                val snap = v.decider.fresh(s"$id(${args.mkString(",")})", sorts.Snap)
+                Q(s, snap, v)
+              }
+
               case _ => /* should never reach this case */
                 createFailure(ve, v, s, true).withLoad(args)
             }
