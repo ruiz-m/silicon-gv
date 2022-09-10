@@ -366,14 +366,14 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                 }
               }
 
-              // TODO: ASK JENNA; should we be counting conjuncts here?
-              case p : ast.Predicate => {
+              /*case p : ast.Predicate => {
+                // TODO: this case will need updated when "unfolding in" is added; not applicable now but maybe in future
                 val snap = v.decider.fresh(s"$id(${args.mkString(",")})", sorts.Snap)
                 val ch = BasicChunk(PredicateID, BasicChunkIdentifier(p.name), args, snap, FullPerm())
                 val s2 = s.copy(optimisticHeap = oh)
                 chunkSupporter.produce(s2, s2.optimisticHeap, ch, v)((s3, oh2, v2) =>
                   Q(s.copy(optimisticHeap = oh2), snap, v2))
-              }
+              }*/
 
               case _ => /* should never reach this case */
                 createFailure(ve, v, s, true).withLoad(args)
@@ -426,10 +426,11 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                 }
               }
 
-              case p: ast.Predicate => {
+              /*case p: ast.Predicate => {
+                // TODO: this case will need updated when "unfolding in" is added; not applicable now but maybe in future
                 val snap = v.decider.fresh(s"$id(${args.mkString(",")})", sorts.Snap)
                 Q(s, snap, v)
-              }
+              }*/
 
               case _ => /* should never reach this case */
                 createFailure(ve, v, s, true).withLoad(args)
@@ -440,6 +441,8 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
             resource match {
               case f: ast.Field => {
                 val snap = v.decider.fresh(s"${args.head}.$id", v.symbolConverter.toSort(f.typ))
+                val ch = BasicChunk(FieldID, BasicChunkIdentifier(f.name), args, snap, FullPerm())
+                val s2 = s.copy(optimisticHeap = oh)
 
                 if (!(s.needConditionFramingProduce &&
                       s.needConditionFramingUnfold)) {
@@ -447,14 +450,14 @@ object chunkSupporter extends ChunkSupportRules with Immutable {
                 }
 
                 v.decider.assume(args.head !== Null())
-
-                Q(s.copy(madeOptimisticAssumptions = true), snap, v)
+                Q(s.copy(optimisticHeap = s2.optimisticHeap + ch, madeOptimisticAssumptions = true), snap, v)
               }
 
-              case p: ast.Predicate => {
+              /*case p: ast.Predicate => {
+                // TODO: this case will need updated when "unfolding in" is added; not applicable now but maybe in future
                 val snap = v.decider.fresh(s"$id(${args.mkString(",")})", sorts.Snap)
                 Q(s, snap, v)
-              }
+              }*/
 
               case _ => /* should never reach this case */
                 createFailure(ve, v, s, true).withLoad(args)
