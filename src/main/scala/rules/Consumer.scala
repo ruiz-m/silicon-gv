@@ -922,7 +922,7 @@ object consumer extends ConsumptionRules with Immutable {
 
     var returnValue: Option[(VerificationResult, Option[Term])] = None
 
-    evalpc(s2.copy(isImprecise = impr), e, pve, v)((s3, t, v1) => {
+    val result = evalpc(s2.copy(isImprecise = impr), e, pve, v)((s3, t, v1) => {
       val s4 = s3.copy(isImprecise = s2.isImprecise)
       v1.decider.assertgv(s4.isImprecise, t) {
         case true =>
@@ -947,6 +947,8 @@ object consumer extends ConsumptionRules with Immutable {
     returnValue match {
       case Some((verificationResult, returnedCheck)) =>
         (verificationResult, returnedCheck)
+      case None =>
+        (result, None)
     }
   }
 }
