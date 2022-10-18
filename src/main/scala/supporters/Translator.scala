@@ -2,7 +2,7 @@ package viper.silicon.supporters
 
 import viper.silver.ast
 import viper.silicon.decider.RecordedPathConditions
-import viper.silicon.state.{terms, State, Store, BasicChunk, Identifier}
+import viper.silicon.state.{BasicChunk, Identifier, State, Store, terms}
 import viper.silicon.resources.{FieldID, PredicateID}
 
 // should we use the path conditions from the state?
@@ -275,7 +275,7 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
         Seq()
       }
       case resolvedVariables => {
-        translatingVars = Seq()
+        translatingVars = translatingVars.filter(v => v != variable)
         resolvedVariables
       }
     }
