@@ -661,7 +661,14 @@ object executor extends ExecutionRules with Immutable {
             val outs = meth.formalReturns.map(_.localVar)
             val gOuts = Store(outs.map(x => (x, v2.decider.fresh(x))).toMap)
             val outOldStore = Store(lhs.zip(outs).map(p => (p._1, gOuts(p._2))).toMap)
-            val s4 = s3.copy(g = s3.g + gOuts,
+            var s4p = s3
+
+            if (isEquiImp(meth.pres))
+              s4p = s3.copy(h = Heap(),
+                optimisticHeap = Heap(),
+                isImprecise = true)
+
+            val s4 = s4p.copy(g = s3.g + gOuts,
               oldStore = Some(s1.g + outOldStore),
               oldHeaps = s3.oldHeaps + (Verifier.PRE_STATE_LABEL -> s1.h) + (Verifier.PRE_HEAP_LABEL -> s1.h) + (Verifier.PRE_OPTHEAP_LABEL -> s1.optimisticHeap))
             produces(s4, freshSnap, meth.posts, _ => pveCall, v2)((s5, v3) => {
