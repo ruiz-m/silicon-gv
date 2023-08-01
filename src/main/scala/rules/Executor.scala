@@ -320,8 +320,14 @@ object executor extends ExecutionRules with Immutable {
                 v0.decider.prover.comment("Loop head block: Establish invariant")
                 consumes(s0.copy(loopPosition = Some(CheckPosition.Loop(invs, LoopPosition.Before))),
                   invs, LoopInvariantNotEstablished, v0)((sLeftover0, _, v1) => {
+                  
+                  var sLeftover1 = sLeftover0
+                  if (isEquiImp(invs))
+                    sLeftover1 = sLeftover0.copy(h = Heap(),
+                      optimisticHeap = Heap(),
+                      isImprecise = true)
 
-                  val sLeftover = sLeftover0.copy(loopPosition = None)
+                  val sLeftover = sLeftover1.copy(loopPosition = None)
                   
                   // unset enum for before loop in symbolic state here?
                   v1.decider.prover.comment("Loop head block: Execute statements of loop head block (in invariant state)")
