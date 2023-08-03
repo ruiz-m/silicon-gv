@@ -2333,9 +2333,19 @@ object evaluator extends EvaluationRules with Immutable {
       t0 match {
         case _ if exps.tail.isEmpty => Q(s1, t0, v1) // Done, if no expressions left (necessary)
         case `stop` => Q(s1, t0, v1) // Done, if last expression was true/false for or/and (optimisation)
-        case _ =>
-          joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>
-            brancher.branch(s2, t0, exps.head, None, v2, true) _ tupled swapIfAnd(
+        case _ => {
+          // Get branch origin for brancher.branch
+          val branchCondOrigin: Option[CheckPosition] =
+            (s1.methodCallAstNode, s1.foldOrUnfoldAstNode, s1.loopPosition) match {
+              case (None, None, None) => None
+              case (Some(methodCallAstNode), None, None) => Some(CheckPosition.GenericNode(methodCallAstNode))
+              case (None, Some(foldOrUnfoldAstNode), None) => Some(CheckPosition.GenericNode(foldOrUnfoldAstNode))
+              case (None, None, Some(_)) => s1.loopPosition
+              case _ => sys.error("Error: _ match case when setting a branch condition origin!")
+            }
+
+          joiner.join[Term, Term](s1, v1)((s2, v2, QB) =>            
+            brancher.branch(s2, t0, exps.head, branchCondOrigin, v2, true) _ tupled swapIfAnd(
               (s3, v3) => QB(s3, constructor(Seq(t0)), v3),
               (s3, v3) => evalSeqShortCircuit(constructor, s3, exps.tail, pve, v3)(QB))
             ){case Seq(ent) =>
@@ -2345,6 +2355,7 @@ object evaluator extends EvaluationRules with Immutable {
               case entries =>
                 sys.error(s"Unexpected join data entries $entries")
             }(Q)
+        }
       }})
   }
 
