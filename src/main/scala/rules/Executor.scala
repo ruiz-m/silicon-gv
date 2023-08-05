@@ -368,14 +368,12 @@ object executor extends ExecutionRules with Immutable {
               sortedEdges
                 .collect{case ce: cfg.ConditionalEdge[ast.Stmt, ast.Exp] => ce.condition}
                 .distinct
-
-            val edgeConditionsForFraming =
-              ast.EqCmp(edgeConditions.head, edgeConditions.head)()
-
-            val conditionsAndInvariants = invs :+ edgeConditionsForFraming
-
-            consumes(s0, conditionsAndInvariants, e => LoopInvariantNotPreserved(e), v)((s1, _, _) => {
-              
+            
+            // call eval on the loop condition to get checks for framing it if needed
+            eval(s0, edgeConditions.head, IfFailed(edgeConditions.head), v)((_, _, _) => 
+              Success())
+            // consume the loop invariant
+            consumes(s0, invs, e => LoopInvariantNotPreserved(e), v)((s1, _, _) => {
               Success()})
         }
 

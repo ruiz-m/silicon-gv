@@ -1197,19 +1197,38 @@ object evaluator extends EvaluationRules with Immutable {
         evalBinOpPc(s, e0, e1, (t1, t2) => And(t1, t2), pve, v, generateChecks)(Q)
 
       /* Short-circuiting evaluation of AND */
-      case ae @ ast.And(_, _) =>
-        val flattened = flattenOperator(ae, {case ast.And(e0, e1) => Seq(e0, e1)})
-        evalSeqShortCircuit(And, s, flattened, pve, v)(Q)
-
+      /* Only do short-circuiting in consume under the assumption that Diff and Translate
+         do NOT change the order of asserted conjuncts. Currently, Diff's conversion into CNF form changes
+         the order. This may be unavoidable due to CNF form. So, currently short-circuiting in consume is turned off. - JWD */
+      /* Turning off short-circuiting may mean we cannot support specs in a way that users would like in 
+         postconditions, asserts, loop invariants, and predicate bodies.
+         For consistency I've turned short-circuiting off for all specs, aka in produce as well - JWD */
+      case ae @ ast.And(e0, e1) =>
+        //if (s.generateChecks)
+          evalBinOpPc(s, e0, e1, (t1, t2) => And(t1, t2), pve, v, generateChecks)(Q)
+        //else {
+          //val flattened = flattenOperator(ae, {case ast.And(e2, e3) => Seq(e2, e3)})
+          //evalSeqShortCircuit(And, s, flattened, pve, v)(Q)
+        //}
 
       /* Strict evaluation of OR */
       case ast.Or(e0, e1) if Verifier.config.disableShortCircuitingEvaluations() =>
         evalBinOpPc(s, e0, e1, (t1, t2) => Or(t1, t2), pve, v, generateChecks)(Q)
 
       /* Short-circuiting evaluation of OR */
-      case oe @ ast.Or(_, _) =>
-        val flattened = flattenOperator(oe, {case ast.Or(e0, e1) => Seq(e0, e1)})
-        evalSeqShortCircuit(Or, s, flattened, pve, v)(Q)
+      /* Only do short-circuiting in consume under the assumption that Diff and Translate
+         do NOT change the order of asserted conjuncts. Currently, Diff's conversion into CNF form changes
+         the order. This may be unavoidable due to CNF form. So, currently short-circuiting in consume is turned off. - JWD */
+      /* Turning off short-circuiting means we cannot support specs like: right == 0 || (left % right >= 0) in 
+         postconditions, asserts, loop invariants, and predicate bodies where they may be consumed.
+         For consistency I've turned short-circuiting off for all specs, aka in produce as well - JWD */
+      case oe @ ast.Or(e0, e1) =>
+        //if (s.generateChecks)
+          evalBinOpPc(s, e0, e1, (t1, t2) => Or(t1, t2), pve, v, generateChecks)(Q)
+        //else {
+        //  val flattened = flattenOperator(oe, {case ast.Or(e2, e3) => Seq(e2, e3)})
+        //  evalSeqShortCircuit(Or, s, flattened, pve, v)(Q)
+        //}
 
       /*
       case implies @ ast.Implies(e0, e1) =>
