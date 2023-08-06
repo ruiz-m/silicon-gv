@@ -205,7 +205,7 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
       (s.h + s.optimisticHeap).getChunksForValue(variable, lenient)
     val pcsEquivalentVariables: Seq[terms.Term] =
       pcs.getEquivalentVariables(variable, lenient) :+ variable
-
+    
     pcsEquivalentVariables.foldRight[Seq[ast.Exp]](Seq())(
       (term, candidateResolvedVariables) =>
           if (translatingVars.exists(t => t.toString == term.toString && t.sort == term.sort)) {
@@ -214,7 +214,7 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
             translatingVars = translatingVars :+ term
             // Attempt normal variable resolution (looking in
             // both heaps, followed by the store)
-            regularVariableResolver(term) match {
+            regularVariableResolver(term, lenient) match {
               case Some(resolvedVariable) => {
                 translatingVars = translatingVars.filter(v => v != term)
                 resolvedVariable +: candidateResolvedVariables
@@ -281,7 +281,7 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
     }
   }
 
-  private def regularVariableResolver(variable: terms.Term): Option[ast.Exp] = {
+  private def regularVariableResolver(variable: terms.Term, lenient: Boolean = false): Option[ast.Exp] = {
 
     // The old store is for resolving variables from the context of a pre- or
     // post condition
@@ -304,12 +304,12 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
     //
     // Ask Jenna about this?
 
-    store.getKeyForValue(variable) match {
+    store.getKeyForValue(variable, lenient) match {
       case None =>
         // Search both heaps for the variable
-        s.h.getChunkForValue(variable) match {
+        s.h.getChunkForValue(variable, lenient) match {
           case None =>
-            s.optimisticHeap.getChunkForValue(variable) match {
+            s.optimisticHeap.getChunkForValue(variable, lenient) match {
               case None => None
               case Some((symVar, id)) =>
                 variableResolver(symVar) match {
@@ -335,7 +335,7 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
       case Some(oldStore) => oldStore
     }
 
-    variable match {
+    variable match { 
       // This is the last resort for translating a variable. It's not as robust
       // as the previous methods, and should be inspected carefully
       //
@@ -405,7 +405,6 @@ final class Translator(s: State, pcs: RecordedPathConditions) {
         // We need to enable "lenient mode" for the store search
         // here, because we've constructed our own identifier
         // (identifiers appear to be compared non-structurally)
-
         val astVar = store.getKeyForValue(receiver, true) match {
           case None => {
             if (identifierArray.size > 1) {
