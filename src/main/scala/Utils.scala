@@ -204,9 +204,21 @@ package object utils {
       case _ => node.pos.toString
     }
 
-    def sourceLineColumn(node: silver.ast.Node with silver.ast.Positioned): String = node.pos match {
-      case pos: silver.ast.HasLineColumn => s"${pos.line}:${pos.column}"
-      case _ => node.pos.toString
+    def sourceLineColumn(node: silver.ast.Node with silver.ast.Positioned): String = {
+      if (node == null) {
+        return "<no position>"
+      }
+      node.pos match {
+        case pos: silver.ast.AbstractSourcePosition => {
+          val endString = pos.end match {
+            case Some(endPos) => s"->${endPos.line}:${endPos.column}"
+            case _ => "<>"
+          }
+          s"${pos.line}:${pos.column}$endString"
+        }
+        case pos: silver.ast.HasLineColumn => s"${pos.line}:${pos.column}"
+        case _ => node.pos.toString
+      }
     }
 
     def sourceLineColumnPair(node: silver.ast.Node with silver.ast.Positioned): (Int, Int) = node.pos match {

@@ -842,7 +842,7 @@ class ExecuteRecord(v: ast.Stmt, s: State, p: PathConditionStack) extends Sequen
   val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
-    "execute"
+    "execute(" + utils.ast.sourceLineColumn(value) + ")"
   }
 
   override def toJson(): String = {
@@ -857,7 +857,7 @@ class EvaluateRecord(v: ast.Exp, s: State, p: PathConditionStack) extends Sequen
   val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
-    "evaluate"
+    "evaluate(" + utils.ast.sourceLineColumn(value) + ")"
   }
 
   override def toJson(): String = {
@@ -872,7 +872,7 @@ class ProduceRecord(v: ast.Exp, s: State, p: PathConditionStack) extends Sequent
   val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
-    "produce"
+    "produce(" + utils.ast.sourceLineColumn(value) + ")"
   }
 
   override def toJson(): String = {
@@ -888,7 +888,7 @@ class ConsumeRecord(v: ast.Exp, s: State, p: PathConditionStack)
   val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
-    "consume"
+    "consume(" + utils.ast.sourceLineColumn(value) + ")"
   }
 
   override def toJson(): String = {
@@ -903,7 +903,7 @@ class WellformednessRecord(v: ast.Exp, s: State, p: PathConditionStack) extends 
   val pcs = if (p != null) p.assumptions else null
 
   def toTypeString(): String = {
-    "wellFormedness"
+    "wellFormedness(" + utils.ast.sourceLineColumn(value) + ")"
   }
 
   override def toJson(): String = {
