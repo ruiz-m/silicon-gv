@@ -131,7 +131,7 @@ object SymbExLogger {
 
   @elidable(INFO)
   private def setEnabled(b: Boolean) {
-    enabled = true // b
+    enabled = b
   }
 
   /** Gives back config from Silicon **/
