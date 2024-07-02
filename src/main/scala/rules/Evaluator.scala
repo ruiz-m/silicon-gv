@@ -24,8 +24,10 @@ import viper.silicon.utils.consistency.createUnexpectedNodeError
 import viper.silicon.utils.toSf
 import viper.silicon.utils.ast.flattenOperator
 import viper.silicon.verifier.Verifier
-import viper.silicon.{EvaluateRecord, Map, SymbExLogger, TriggerSets}
+import viper.silicon.{Map, TriggerSets}
 import viper.silicon.interfaces.state.{ChunkIdentifer, NonQuantifiedChunk}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{EvaluateRecord, EvaluatePCRecord}
 
 /* TODO: With the current design w.r.t. parallelism, eval should never "move" an execution
  *       to a different verifier. Hence, consider not passing the verifier to continuations
@@ -121,9 +123,9 @@ object evaluator extends EvaluationRules with Immutable {
           (Q: (State, Term, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    val sepIdentifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, s, v.decider.pcs))
+    val sepIdentifier = SymbExLogger.currentLog().openScope(new EvaluateRecord(e, s, v.decider.pcs))
     eval3(s, e, pve, v)((s1, t, v1) => {
-      SymbExLogger.currentLog().collapse(e, sepIdentifier)
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       Q(s1, t, v1)})
   }
 
@@ -131,9 +133,9 @@ object evaluator extends EvaluationRules with Immutable {
           (Q: (State, Term, Verifier) => VerificationResult)
           : VerificationResult = {
 
-    val sepIdentifier = SymbExLogger.currentLog().insert(new EvaluateRecord(e, s, v.decider.pcs))
+    val sepIdentifier = SymbExLogger.currentLog().openScope(new EvaluatePCRecord(e, s, v.decider.pcs))
     eval3pc(s, e, pve, v, generateChecks)((s1, t, v1) => {
-      SymbExLogger.currentLog().collapse(e, sepIdentifier)
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       Q(s1, t, v1)})
   }
 

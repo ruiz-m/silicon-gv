@@ -13,6 +13,7 @@ import viper.silver.ast.Node
 import java.util.concurrent._
 import viper.silicon.common.concurrency._
 import viper.silicon.interfaces.{Unreachable, VerificationResult, Success, Failure}
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.state.{State, CheckPosition, runtimeChecks, BranchCond}
 import viper.silicon.state.terms.{Not, Term}
 import viper.silicon.supporters.Translator
@@ -84,6 +85,8 @@ object brancher extends BranchingRules with Immutable {
     v.decider.prover.comment(thenBranchComment)
     v.decider.prover.comment(elseBranchComment)
 
+    val uidBranchPoint = SymbExLogger.currentLog().insertBranchPoint(2, Some(condition))
+
     val elseBranchVerificationTask: Verifier => VerificationResult =
       if (executeElseBranch) {
 /* [BRANCH-PARALLELISATION] */
@@ -106,6 +109,8 @@ object brancher extends BranchingRules with Immutable {
 //        v.decider.pcs.branchConditions foreach (a => println(s"    $a"))
 
         (v0: Verifier) => {
+          SymbExLogger.currentLog().switchToNextBranch(uidBranchPoint)
+          SymbExLogger.currentLog().markReachable(uidBranchPoint)
           executionFlowController.locally(s, v0)((s1, v1) => {
             if (v.uniqueId != v1.uniqueId) {
 
@@ -162,6 +167,7 @@ object brancher extends BranchingRules with Immutable {
       }
 
     val rsThen: VerificationResult = (if (executeThenBranch) {
+      SymbExLogger.currentLog().markReachable(uidBranchPoint)
       executionFlowController.locally(s, v)((s1, v1) => {
         v1.decider.prover.comment(s"[then-branch: $cnt | $condition]")
         val cond: Exp =
@@ -213,6 +219,7 @@ object brancher extends BranchingRules with Immutable {
       }
     }
 
+    SymbExLogger.currentLog().endBranchPoint(uidBranchPoint)
     if (s.isImprecise && !fromShortCircuitingAnd) {
       rsThen match {
         case Success() => {

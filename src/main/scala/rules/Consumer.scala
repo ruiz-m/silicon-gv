@@ -13,12 +13,13 @@ import viper.silver.verifier.PartialVerificationError
 import viper.silver.verifier.reasons._
 import viper.silicon.Stack
 import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{CondExpRecord, ConsumeRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.supporters.Translator
 import viper.silicon.verifier.Verifier
-import viper.silicon.{ConsumeRecord, GlobalBranchRecord, SymbExLogger}
 import viper.silicon.utils
 
 trait ConsumptionRules extends SymbolicExecutionRules {
@@ -222,9 +223,9 @@ object consumer extends ConsumptionRules with Immutable {
     /* TODO: To remove this cast: Add a type argument to the ConsumeRecord.
      *       Globally the types match, but locally the type system does not know.
      */
-    val SEP_identifier = SymbExLogger.currentLog().insert(new ConsumeRecord(a, s1, v.decider.pcs))
+    val sepIdentifier = SymbExLogger.currentLog().openScope(new ConsumeRecord(a, s1, v.decider.pcs))
     consumeTlc(s1, impr, oh, h0, a, pve, v)((s2, oh2, h2, snap2, v1) => {
-      SymbExLogger.currentLog().collapse(a, SEP_identifier)
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       Q(s2, oh2, h2, snap2, v1)})
   }
 
@@ -280,13 +281,11 @@ object consumer extends ConsumptionRules with Immutable {
       //
       // set some local variable, sourceCall, so we can continue to access it?
       case ite @ ast.CondExp(e0, a1, a2) =>
-        val gbLog = new GlobalBranchRecord(ite, s, v.decider.pcs, "consume")
-        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
-        SymbExLogger.currentLog().initializeBranching()
+        val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "consume")
+        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
+
         evalpc(s.copy(isImprecise = impr), e0, pve, v)((s1, t0, v1) => {
           val s2 = s1.copy(isImprecise = s.isImprecise)
-          gbLog.finish_cond()
-          val branch_res = {
       
             // what was happening here...?
             // we were unsetting the position in the state at the beginning of
@@ -318,18 +317,15 @@ object consumer extends ConsumptionRules with Immutable {
               //
               // that's why it worked before...? the way we do it now is
               // better, maybe
-              (s3, v2) => consumeR(s3, impr, oh, h, a1, pve, v2)((s4, oh3, h3, snap3, v3) => {
-                val res1 = Q(s4, oh3, h3, snap3, v3)
-                gbLog.finish_thnSubs()
-                SymbExLogger.currentLog().prepareOtherBranch(gbLog)
-                res1}),
-              (s3, v2) => consumeR(s3, impr, oh, h, a2, pve, v2)((s4, oh3, h3, snap3, v3) => {
-                val res2 = Q(s4, oh3, h3, snap3, v3)
-                gbLog.finish_elsSubs()
-                res2}))
-          }
-          SymbExLogger.currentLog().collapse(null, sepIdentifier)
-          branch_res})
+              (s3, v2) => consumeR(s3, impr, oh, h, a1, pve, v2)((s4, oh3, h3, t1, v3) => {
+                SymbExLogger.currentLog().closeScope(uidCondExp)
+                Q(s4, oh3, h3, t1, v3)
+              }),
+              (s3, v2) => consumeR(s3, impr, oh, h, a2, pve, v2)((s4, oh3, h3, t1, v3) => {
+                SymbExLogger.currentLog().closeScope(uidCondExp)
+                Q(s4, oh3, h3, t1, v3)
+              }))
+        })
 
       /* TODO: Initial handling of QPs is identical/very similar in consumer
        *       and producer. Try to unify the code.

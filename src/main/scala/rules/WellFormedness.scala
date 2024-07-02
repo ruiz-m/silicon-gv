@@ -7,7 +7,7 @@ import viper.silicon.interfaces.VerificationResult
 import viper.silicon.state.State
 import viper.silicon.state.terms._
 import viper.silicon.verifier.Verifier
-import viper.silicon.{WellformednessRecord, SymbExLogger}
+// import viper.silicon.{WellformednessRecord, SymbExLogger}
 
 
 
@@ -39,10 +39,11 @@ object wellFormedness extends WellFormednessRules with Immutable {
                 (Q: (State, Verifier) => VerificationResult)
                 : VerificationResult = {
 
-    val sepIdentifier = SymbExLogger.currentLog().insert(new WellformednessRecord(viper.silicon.utils.ast.BigAnd(e), s, v.decider.pcs))
+    // TODO Wellformedness
+    // val sepIdentifier = SymbExLogger.currentLog().insert(new WellformednessRecord(viper.silicon.utils.ast.BigAnd(e), s, v.decider.pcs))
     produce(s, sf, viper.silicon.utils.ast.BigAnd(e), pve, v)((s1, v1) =>
       produce(s, sf, viper.silicon.utils.ast.BigAnd(e), pve, v1)((s2, v2) => {
-        SymbExLogger.currentLog().collapse( viper.silicon.utils.ast.BigAnd(e), sepIdentifier) //TODO: fix type mismatch
+        // SymbExLogger.currentLog().collapse( viper.silicon.utils.ast.BigAnd(e), sepIdentifier) //TODO: fix type mismatch
         Q(s2, v2)}))
   }
 

@@ -9,7 +9,7 @@ package viper.silicon.tests
 import java.nio.file.Path
 
 import org.scalatest.DoNotDiscover
-import viper.silicon.{Silicon, SiliconFrontend, SymbExLogger}
+import viper.silicon.{Silicon, SiliconFrontend}
 import viper.silver.reporter.NoopReporter
 import viper.silver.testing.{SilSuite, StatisticalTestSuite}
 import viper.silver.verifier.Verifier
@@ -100,9 +100,9 @@ class PortableSiliconTests extends SilSuite with StatisticalTestSuite {
     // to be tested must be known, which is why it's passed here to the SymbExLogger-Object.
     // SymbExLogger.reset() cleans the logging object (only relevant for verifying multiple
     // tests at once, e.g. with the 'test'-sbt-command.
-    SymbExLogger.reset()
-    SymbExLogger.filePath = files.head
-    SymbExLogger.initUnitTestEngine()
+    // SymbExLogger.reset()
+    // SymbExLogger.filePath = files.head
+    // SymbExLogger.initUnitTestEngine()
 
     /* If needed, Silicon reads the filename of the program under verification from Verifier.inputFile.
     When the test suite is executed (sbt test/testOnly), Verifier.inputFile is set here. When Silicon is

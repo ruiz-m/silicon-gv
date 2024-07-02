@@ -10,9 +10,11 @@ import scala.reflect.ClassTag
 import viper.silver.ast
 import viper.silver.verifier.{ErrorReason, PartialVerificationError}
 import viper.silver.verifier.reasons.{InsufficientPermission, MagicWandChunkNotFound}
-import viper.silicon.{Map, SymbExLogger}
+import viper.silicon.Map
 import viper.silicon.interfaces.state._
 import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.CommentRecord
 import viper.silicon.resources.{NonQuantifiedPropertyInterpreter, QuantifiedPropertyInterpreter, Resources}
 import viper.silicon.state._
 import viper.silicon.state.terms._
@@ -1188,6 +1190,10 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
                         v: Verifier)
                        : (ConsumptionResult, State, Seq[QuantifiedBasicChunk]) = {
 
+
+    val rmPermRecord = new CommentRecord("removePermissions", s, v.decider.pcs)
+    val sepIdentifier = SymbExLogger.currentLog().openScope(rmPermRecord)
+
     val requiredId = ChunkIdentifier(resource, Verifier.program)
     assert(
       relevantChunks forall (_.id == requiredId),
@@ -1278,6 +1284,7 @@ object quantifiedChunkSupporter extends QuantifiedChunkSupport with Immutable {
         success
 
     v.decider.prover.comment("Done removing quantified permissions")
+    SymbExLogger.currentLog().closeScope(sepIdentifier)
 
     (success, s.copy(functionRecorder = currentFunctionRecorder), remainingChunks)
   }
