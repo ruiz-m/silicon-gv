@@ -13,19 +13,23 @@ import LogConfigProtocol._
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 import viper.silicon.decider.PathConditionStack
+import viper.silicon.interfaces.state.Chunk
 import viper.silicon.logger.SymbExLogger.getRecordConfig
 import viper.silicon.logger.records.SymbolicRecord
 import viper.silicon.logger.records.data.{DataRecord, FunctionRecord, MemberRecord, MethodRecord, PredicateRecord}
 import viper.silicon.logger.records.scoping.{CloseScopeRecord, OpenScopeRecord, ScopingRecord}
 import viper.silicon.logger.records.structural.BranchingRecord
 import viper.silicon.logger.renderer.SimpleTreeRenderer
+import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.{Config, Map}
 import viper.silver.ast
+import viper.silver.verifier.AbstractError
 
 import scala.annotation.elidable
 import scala.annotation.elidable._
+import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
 
 /* TODO: InsertionOrderedSet is used by the logger, but the insertion order is
@@ -290,6 +294,86 @@ object SymbExLogger {
       val simpleTreeRenderer = new SimpleTreeRenderer()
       simpleTreeRenderer.render(memberList)
     } else ""
+  }
+
+  // This method exists because IntelliJ cannot find SymbLog.main
+  def m(symbLog: SymbLog): MemberRecord = symbLog.main
+
+  var errors: Seq[AbstractError] = Seq.empty
+  // we can have a single global snaps because fresh Vars starting with $t are globally unique
+  var snaps = mutable.Map[Term, BasicChunk]()
+
+  def formatTerm(term: Term): String =
+    term match {
+      case Var(SuffixedIdentifier(prefix, _, _), _) if prefix == "$t" =>
+        formatBasicChunk(snaps(term))
+      case Var(SuffixedIdentifier(prefix, _, _), _) => prefix
+      case SortWrapper(wrappedTerm, sort) => formatBasicChunk(snaps(term))
+      case Null() => "null"
+      case True() => "true"
+      case False() => "false"
+      case IntLiteral(n) => n.toString()
+      case Plus(p0, p1) => "(" + formatTerm(p0) + " + " + formatTerm(p1) + ")"
+      case Minus(p0, p1) => "(" + formatTerm(p0) + " - " + formatTerm(p1) + ")"
+      case Times(p0, p1) => "(" + formatTerm(p0) + " * " + formatTerm(p1) + ")"
+      case Div(p0, p1) => "(" + formatTerm(p0) + " / " + formatTerm(p1) + ")"
+      case Mod(p0, p1) => "(" + formatTerm(p0) + " % " + formatTerm(p1) + ")"
+      case Not(p) => "(" + "!" + formatTerm(p) + ")"
+      case _ => "%" + term.getClass.getName
+    }
+
+  def formatBasicChunk(basicChunk: BasicChunk): String = {
+    val s = basicChunk.snap match {
+      case Unit => " == " + basicChunk.snap.toString
+      case Null() => " == null"
+      case IntLiteral(n) => " == " + n.toString()
+      case True() => " == true"
+      case False() => " == false"
+      case Var(SuffixedIdentifier(prefix, _, _), _) if prefix == "$t" => ""
+      case Var(SuffixedIdentifier(prefix, _, _), _) => " == " + prefix
+      case _ => ""
+    }
+    basicChunk.resourceID match {
+      case FieldID =>
+        val typeAndFieldName = basicChunk.id.name.split("\\$")
+        val fieldName = if (typeAndFieldName.length == 2) {
+          typeAndFieldName.last
+        } else {
+          "?"
+        }
+        "@(" + formatTerm(basicChunk.args.head) + "->" + fieldName + ")" + s
+      case PredicateID =>
+        val argsAsString = basicChunk.args.map(formatTerm).mkString(", ")
+        basicChunk.id.name + "(" + argsAsString + ")" + s
+      case _ => ""
+    }
+  }
+
+  def formatChunks(chunks: Iterable[Chunk]): String = {
+    // populate snaps
+    for (chunk <- chunks) {
+      chunk match {
+        case basicChunk: BasicChunk =>
+          basicChunk.snap match {
+            case Var(SuffixedIdentifier(prefix, _, _), _) if prefix == "$t" =>
+              snaps += basicChunk.snap -> basicChunk
+            case SortWrapper(wrappedTerm, sort) =>
+              snaps += basicChunk.snap -> basicChunk
+            case _ => {}
+          }
+        case _ => {}
+      }
+    }
+    // print values
+    var result = ""
+    for (chunk <- chunks) {
+      chunk match {
+        case basicChunk: BasicChunk =>
+          result += formatBasicChunk(basicChunk) + "; "
+        case _ => { }
+      }
+    }
+    result
   }
 
   /** Path to the file that is being executed. Is used for UnitTesting. **/
