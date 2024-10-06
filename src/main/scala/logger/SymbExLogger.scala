@@ -306,9 +306,9 @@ object SymbExLogger {
   def formatTerm(term: Term): String =
     term match {
       case Var(SuffixedIdentifier(prefix, _, _), _) if prefix == "$t" =>
-        formatBasicChunk(snaps(term))
+        formatBasicChunk(snaps(term), true)
       case Var(SuffixedIdentifier(prefix, _, _), _) => prefix
-      case SortWrapper(wrappedTerm, sort) => formatBasicChunk(snaps(term))
+      case SortWrapper(_, _) => formatBasicChunk(snaps(term), true)
       case Null() => "null"
       case True() => "true"
       case False() => "false"
@@ -322,7 +322,7 @@ object SymbExLogger {
       case _ => "%" + term.getClass.getName
     }
 
-  def formatBasicChunk(basicChunk: BasicChunk): String = {
+  def formatBasicChunk(basicChunk: BasicChunk, insideTerm: Boolean): String = {
     val s = basicChunk.snap match {
       case Unit => " == " + basicChunk.snap.toString
       case Null() => " == null"
@@ -341,7 +341,12 @@ object SymbExLogger {
         } else {
           "?"
         }
-        "@(" + formatTerm(basicChunk.args.head) + "->" + fieldName + ")" + s
+        val fieldAcc = formatTerm(basicChunk.args.head) + "->" + fieldName
+        if (insideTerm) {
+          fieldAcc + s
+        } else {
+          "acc(" + fieldAcc + ")" + s
+        }
       case PredicateID =>
         val argsAsString = basicChunk.args.map(formatTerm).mkString(", ")
         basicChunk.id.name + "(" + argsAsString + ")" + s
@@ -369,7 +374,7 @@ object SymbExLogger {
     for (chunk <- chunks) {
       chunk match {
         case basicChunk: BasicChunk =>
-          result += formatBasicChunk(basicChunk) + "; "
+          result += formatBasicChunk(basicChunk, false) + "; "
         case _ => { }
       }
     }
