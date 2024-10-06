@@ -11,6 +11,8 @@ import viper.silver.ast
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.verifier.PartialVerificationError
 import viper.silicon.interfaces.{Failure, VerificationResult}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{CondExpRecord, ProduceRecord}
 import viper.silicon.resources.{FieldID, PredicateID}
 import viper.silicon.state.terms.predef.`?r`
 import viper.silicon.state.terms._
@@ -18,7 +20,6 @@ import viper.silicon.state._
 import viper.silicon.supporters.functions.NoopFunctionRecorder
 import viper.silicon.utils.toSf
 import viper.silicon.verifier.Verifier
-import viper.silicon.{GlobalBranchRecord, ProduceRecord, SymbExLogger}
 import viper.silver.verifier.reasons._
 
 trait ProductionRules extends SymbolicExecutionRules {
@@ -189,10 +190,9 @@ object producer extends ProductionRules with Immutable {
                                 v: Verifier)
                                (Q: (State, Verifier) => VerificationResult)
                                : VerificationResult = {
-
-    val sepIdentifier = SymbExLogger.currentLog().insert(new ProduceRecord(a, s, v.decider.pcs))
+    val sepIdentifier = SymbExLogger.currentLog().openScope(new ProduceRecord(a, s, v.decider.pcs))
     produceTlc(s, sf, a, pve, v)((s1, v1) => {
-      SymbExLogger.currentLog().collapse(a, sepIdentifier)
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       Q(s1, v1)})
   }
 
@@ -252,15 +252,12 @@ object producer extends ProductionRules with Immutable {
       //
       // IMPORTANT: that field must be unset before 
       case ite @ ast.CondExp(e0, a1, a2) =>
+        val condExpRecord = new CondExpRecord(ite, s, v.decider.pcs, "produce")
+        val uidCondExp = SymbExLogger.currentLog().openScope(condExpRecord)
 
-        val gbLog = new GlobalBranchRecord(ite, s, v.decider.pcs, "produce")
-        val sepIdentifier = SymbExLogger.currentLog().insert(gbLog)
-        SymbExLogger.currentLog().initializeBranching()
         val s_1 = s.copy(generateChecks = false, needConditionFramingProduce = true)
         evalpc(s_1, e0, pve, v, false)((s1, t0, v1) => {
           val s1_1 = s.copy(generateChecks = true, needConditionFramingProduce = false)
-          gbLog.finish_cond()
-          val branch_res = {
 
             // val branchPositionAstNode = s.methodCallAstNode match {
             //   case None => {
@@ -288,17 +285,14 @@ object producer extends ProductionRules with Immutable {
 
             branch(s1_1, t0, e0, branchPosition, v1)(
               (s2, v2) => produceR(s2, sf, a1, pve, v2)((s3, v3) => {
-                val res1 = Q(s3, v3)
-                gbLog.finish_thnSubs()
-                SymbExLogger.currentLog().prepareOtherBranch(gbLog)
-                res1}),
+                SymbExLogger.currentLog().closeScope(uidCondExp)
+                Q(s3, v3)
+              }),
               (s2, v2) => produceR(s2, sf, a2, pve, v2)((s3, v3) => {
-                val res2 = Q(s3, v3)
-                gbLog.finish_elsSubs()
-                res2}))
-          }
-          SymbExLogger.currentLog().collapse(null, sepIdentifier)
-          branch_res})
+                SymbExLogger.currentLog().closeScope(uidCondExp)
+                Q(s3, v3)
+              }))
+        })
 
 /*      case let: ast.Let if !let.isPure =>
  *      letSupporter.handle[ast.Exp](s, let, pve, v)((s1, g1, body, v1) =>

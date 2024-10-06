@@ -11,10 +11,12 @@ import com.typesafe.scalalogging.Logger
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.DependencyNotFoundError
-import viper.silicon.{Silicon, SymbExLogger}
+import viper.silicon.Silicon
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.{Prover, Unsat}
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.{DeciderAssertRecord, DeciderAssumeRecord, ProverAssertRecord}
 import viper.silicon.state._
 import viper.silicon.state.terms._
 import viper.silicon.supporters.TermDifference
@@ -196,6 +198,9 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def assumeWithoutSmokeChecks(terms: InsertionOrderedSet[Term]) = {
+      val assumeRecord = new DeciderAssumeRecord(terms)
+      val sepIdentifier = SymbExLogger.currentLog().openScope(assumeRecord)
+
       /* Add terms to Silicon-managed path conditions */
      //println(s"Decider: adding path condition terms ${terms}")
      terms foreach pathConditions.add
@@ -203,6 +208,7 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
       /* Add terms to the prover's assumptions */
       terms foreach prover.assume
 
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       None
     }
 
@@ -288,9 +294,14 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def deciderAssert(t: Term, timeout: Option[Int]) = {
-      val asserted = isKnownToBeTrue(t)
+      val assertRecord = new DeciderAssertRecord(t, timeout)
+      val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
 
-      asserted || proverAssert(t, timeout)
+      val asserted = isKnownToBeTrue(t)
+      val result = asserted || proverAssert(t, timeout)
+
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
+      result
     }
 
     private def isKnownToBeTrue(t: Term) = t match {
@@ -302,8 +313,15 @@ trait DefaultDeciderProvider extends VerifierComponent { this: Verifier =>
     }
 
     private def proverAssert(t: Term, timeout: Option[Int]) = {
-      val result = prover.assert(t, timeout)
+      val assertRecord = new ProverAssertRecord(t, timeout)
+      val sepIdentifier = SymbExLogger.currentLog().openScope(assertRecord)
 
+      val result = prover.assert(t, timeout)
+      val statistics = prover.statistics()
+      val deltaStatistics = SymbExLogger.getDeltaSmtStatistics(statistics)
+      assertRecord.statistics = Some(statistics ++ deltaStatistics)
+
+      SymbExLogger.currentLog().closeScope(sepIdentifier)
       result
     }
 

@@ -8,14 +8,16 @@ package viper.silicon.verifier
 
 import java.text.SimpleDateFormat
 import java.util.concurrent._
+
 import scala.util.Random
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
-import viper.silicon._
+import viper.silicon.{Config, Silicon}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.SMTLib2PreambleReader
 import viper.silicon.interfaces._
 import viper.silicon.interfaces.decider.ProverLike
+import viper.silicon.logger.SymbExLogger
 import viper.silicon.reporting.{MultiRunRecorders, condenseToViperResult}
 import viper.silicon.state._
 import viper.silicon.state.terms.{Decl, Sort, Term, sorts}
@@ -26,7 +28,7 @@ import viper.silicon.utils.Counter
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.cfg.silver.SilverCfg
 import viper.silver.plugin.PluginAwareReporter
-import viper.silver.reporter.{ConfigurationConfirmation, VerificationResultMessage}
+import viper.silver.reporter.{ConfigurationConfirmation, ExecutionTraceReport, VerificationResultMessage}
 
 /* TODO: Extract a suitable MasterVerifier interface, probably including
  *         - def verificationPoolManager: VerificationPoolManager)
@@ -88,6 +90,8 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
     super.stop()
     statefulSubcomponents foreach (_.stop())
   }
+
+  def postConditionAxioms(): Vector[Term] = functionsSupporter.getPostConditionAxioms()
 
   /* Verifier orchestration */
 
@@ -237,11 +241,10 @@ class DefaultMasterVerifier(config: Config, override val reporter: PluginAwareRe
 
     logger.debug(s"Final runtime checks: ${runtimeChecks.getChecks}")
 
-    /** Write JavaScript-Representation of the log if the SymbExLogger is enabled */
-    SymbExLogger.writeJSFile()
-    /** Write DOT-Representation of the log if the SymbExLogger is enabled */
-    SymbExLogger.writeDotFile()
-    SymbExLogger.writeTextFile()
+    reporter report ExecutionTraceReport(
+      SymbExLogger.memberList,
+      List[Term](), // this.axiomsAfterAnalysis() doesn't work because no this.domainsContributor
+      this.postConditionAxioms().toList)
 
     // _program.foreach((astNode) => {
     //   println(s"ast node: ${astNode}")

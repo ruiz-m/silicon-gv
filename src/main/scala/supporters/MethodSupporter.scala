@@ -7,12 +7,14 @@
 package viper.silicon.supporters
 
 import com.typesafe.scalalogging.Logger
-import viper.silicon.{SymbExLogger, WellformednessCheckRecord}
 import viper.silver.ast
 import viper.silver.components.StatefulComponent
 import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
+import viper.silicon.logger.SymbExLogger
+import viper.silicon.logger.records.data.CommentRecord
+import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer, wellFormedness}
 import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
@@ -44,7 +46,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
     def verify(sInit: State, method: ast.Method): Seq[VerificationResult] = {
       logger.debug("\n\n" + "-" * 10 + " METHOD " + method.name + "-" * 10 + "\n")
       decider.prover.comment("%s %s %s".format("-" * 10, method.name, "-" * 10))
-      SymbExLogger.insertMember(method, null, v.decider.pcs)
+      SymbExLogger.openMemberScope(method, null, v.decider.pcs)
       val pres = method.pres
       val posts = method.posts
 
@@ -87,16 +89,21 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                                    optimisticHeap = Heap(),
                                    h = Heap())
                   val impLog = new WellformednessCheckRecord(posts, s, v.decider.pcs)
-                  val sepIdentifier = SymbExLogger.currentLog().insert(impLog)
+                  val sepIdentifier = SymbExLogger.currentLog().openScope(impLog)
                   wellformed(s4, freshSnap, posts, ContractNotWellformed(viper.silicon.utils.ast.BigAnd(posts)), v3)((_, v4) => {
-                   SymbExLogger.currentLog().collapse(null, sepIdentifier)
+                    SymbExLogger.currentLog().closeScope(sepIdentifier)
                     Success()})})
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) =>  {
                   exec(s3, body, v3)((s4, v4) =>
-                    consumes(s4, posts, postViolated, v4)((_, _, _) =>
-                      Success()))}) }  )})})
+                    consumes(s4, posts, postViolated, v4)((s5, _, v5) => {
+                      val impLog = new CommentRecord("End", s5, v5.decider.pcs)
+                      val sepIdentifier = SymbExLogger.currentLog().openScope(impLog)
+                      SymbExLogger.currentLog().closeScope(sepIdentifier)
+                      Success()
+                    } ))}) }  )})})
 
+      SymbExLogger.closeMemberScope()
       Seq(result)
     }
 
