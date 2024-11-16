@@ -19,7 +19,10 @@ object LogConfig {
     List(
       RecordConfig("comment", None),
       RecordConfig("conditional edge", None),
+      RecordConfig("end", None),
       RecordConfig("execute", None),
+      RecordConfig("loop in", None),
+      RecordConfig("loop out", None),
       RecordConfig("method call", None),
       // branching records are always recorded
       RecordConfig("joining", None)

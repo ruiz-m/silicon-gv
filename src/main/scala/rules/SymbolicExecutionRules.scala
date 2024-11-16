@@ -16,8 +16,8 @@ import viper.silver.verifier.{Counterexample, CounterexampleTransformer, Model, 
 
 trait SymbolicExecutionRules extends Immutable {
   protected def createFailure(ve: VerificationError, v: Verifier, s: State, generateNewModel: Boolean = false): Failure = {
-    val impLog = new CommentRecord("Failure", s, v.decider.pcs)
-    val sepIdentifier = SymbExLogger.currentLog().openScope(impLog)
+    val sepIdentifier = SymbExLogger.currentLog().openScope(
+      new CommentRecord("Failure", s, v.decider.pcs))
     SymbExLogger.currentLog().closeScope(sepIdentifier)
     var ceTrafo: Option[CounterexampleTransformer] = None
     val res = ve match {
