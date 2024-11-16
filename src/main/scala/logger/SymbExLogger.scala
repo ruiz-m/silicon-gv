@@ -12,6 +12,7 @@ import spray.json._
 import LogConfigProtocol._
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.PathConditionStack
 import viper.silicon.interfaces.state.Chunk
 import viper.silicon.logger.SymbExLogger.getRecordConfig
@@ -307,7 +308,7 @@ object SymbExLogger {
     term match {
       case Var(SuffixedIdentifier(prefix, _, _), _) if prefix == "$t" =>
         formatBasicChunk(snaps(term), true)
-      case Var(SuffixedIdentifier(prefix, _, _), _) => prefix
+      case Var(SuffixedIdentifier(prefix, _, suffix), _) => prefix + "`" + suffix.split('@')(0)
       case SortWrapper(_, _) => formatBasicChunk(snaps(term), true)
       case Null() => "null"
       case True() => "true"
@@ -318,8 +319,13 @@ object SymbExLogger {
       case Times(p0, p1) => "(" + formatTerm(p0) + " * " + formatTerm(p1) + ")"
       case Div(p0, p1) => "(" + formatTerm(p0) + " / " + formatTerm(p1) + ")"
       case Mod(p0, p1) => "(" + formatTerm(p0) + " % " + formatTerm(p1) + ")"
+      case BuiltinEquals(p0, p1) => "(" + formatTerm(p0) + " == " + formatTerm(p1) + ")"
+      case Less(p0, p1) => "(" + formatTerm(p0) + " < " + formatTerm(p1) + ")"
+      case AtMost(p0, p1) => "(" + formatTerm(p0) + " <= " + formatTerm(p1) + ")"
+      case Greater(p0, p1) => "(" + formatTerm(p0) + " > " + formatTerm(p1) + ")"
+      case AtLeast(p0, p1) => "(" + formatTerm(p0) + " >= " + formatTerm(p1) + ")"
       case Not(p) => "(" + "!" + formatTerm(p) + ")"
-      case _ => "%" + term.getClass.getName
+      case _ => "'" + term.toString + "'"
     }
 
   def formatBasicChunk(basicChunk: BasicChunk, insideTerm: Boolean): String = {
@@ -379,6 +385,43 @@ object SymbExLogger {
       }
     }
     result
+  }
+
+  def isValidPathCondition(term: Term): Boolean =
+    term match {
+      case App(_, _) => false
+      case Combine(_, _) => false
+      case First(_) => false
+      case Second(_) => false
+      case Var(SuffixedIdentifier(prefix, _, _), _) if prefix == "$t" => snaps.isDefinedAt(term)
+      case Var(SuffixedIdentifier(prefix, _, _), _) => true
+      case SortWrapper(_, _) => snaps.isDefinedAt(term)
+      case Null() => true
+      case True() => true
+      case False() => true
+      case IntLiteral(n) => true
+      case Plus(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
+      case Minus(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
+      case Times(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
+      case Div(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
+      case Mod(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
+      case BuiltinEquals(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
+      case Less(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
+      case AtMost(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
+      case Greater(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
+      case AtLeast(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
+      case Not(p) => isValidPathCondition(p)
+      case _ => true
+    }
+
+  def isNotEquals(term: Term): Boolean =
+    term match {
+      case Not(BuiltinEquals(_, _)) => false
+      case _ => true
+    }
+
+  def formatPathConditions(pcs: InsertionOrderedSet[Term]): String = {
+    pcs.filter(isValidPathCondition).map(formatTerm).mkString(", ")
   }
 
   /** Path to the file that is being executed. Is used for UnitTesting. **/

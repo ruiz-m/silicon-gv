@@ -13,7 +13,7 @@ import viper.silver.verifier.errors._
 import viper.silicon.interfaces._
 import viper.silicon.decider.Decider
 import viper.silicon.logger.SymbExLogger
-import viper.silicon.logger.records.data.CommentRecord
+import viper.silicon.logger.records.data.EndRecord
 import viper.silicon.logger.records.data.WellformednessCheckRecord
 import viper.silicon.rules.{consumer, executionFlowController, executor, producer, wellFormedness}
 import viper.silicon.state.{Heap, State, Store}
@@ -94,14 +94,14 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
                     SymbExLogger.currentLog().closeScope(sepIdentifier)
                     Success()})})
             && {
-               executionFlowController.locally(s2a, v2)((s3, v3) =>  {
-                  exec(s3, body, v3)((s4, v4) =>
-                    consumes(s4, posts, postViolated, v4)((s5, _, v5) => {
-                      val impLog = new CommentRecord("End", s5, v5.decider.pcs)
-                      val sepIdentifier = SymbExLogger.currentLog().openScope(impLog)
+               executionFlowController.locally(s2a, v2)((s3, v3) => {
+                  exec(s3, body, v3)((s4, v4) => {
+                    val sepIdentifier = SymbExLogger.currentLog().openScope(new EndRecord(method, s4, v4.decider.pcs))
+                    consumes(s4, posts, postViolated, v4)((_, _, _) => {
                       SymbExLogger.currentLog().closeScope(sepIdentifier)
                       Success()
-                    } ))}) }  )})})
+                    })
+                  }) }) }  )})})
 
       SymbExLogger.closeMemberScope()
       Seq(result)
