@@ -360,8 +360,7 @@ object SymbExLogger {
     }
   }
 
-  def formatChunks(chunks: Iterable[Chunk]): String = {
-    // populate snaps
+  def populateSnaps(chunks: Iterable[Chunk]): Unit =
     for (chunk <- chunks) {
       chunk match {
         case basicChunk: BasicChunk =>
@@ -375,7 +374,14 @@ object SymbExLogger {
         case _ => {}
       }
     }
-    // print values
+
+  def diffChunks(oldChunks: Iterable[Chunk], newChunks: Iterable[Chunk]): (Iterable[Chunk], Iterable[Chunk]) = {
+    val consumed = for (chunk <- oldChunks if !newChunks.exists(_ == chunk)) yield chunk
+    val produced = for (chunk <- newChunks if !oldChunks.exists(_ == chunk)) yield chunk
+    (consumed, produced)
+  }
+
+  def formatChunks(chunks: Iterable[Chunk]): String = {
     var result = ""
     for (chunk <- chunks) {
       chunk match {
@@ -387,7 +393,13 @@ object SymbExLogger {
     result
   }
 
-  def isValidPathCondition(term: Term): Boolean =
+  def formatDiff(oldChunks: Iterable[Chunk], newChunks: Iterable[Chunk]): (String, String) = {
+    val (consumed, produced) = diffChunks(oldChunks, newChunks)
+    populateSnaps(newChunks)
+    (formatChunks(consumed), formatChunks(produced))
+  }
+
+  def pcVisible(term: Term): Boolean =
     term match {
       case App(_, _) => false
       case Combine(_, _) => false
@@ -400,17 +412,17 @@ object SymbExLogger {
       case True() => true
       case False() => true
       case IntLiteral(n) => true
-      case Plus(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
-      case Minus(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
-      case Times(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
-      case Div(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
-      case Mod(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
-      case BuiltinEquals(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
-      case Less(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
-      case AtMost(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
-      case Greater(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
-      case AtLeast(p0, p1) => isValidPathCondition(p0) && isValidPathCondition(p1)
-      case Not(p) => isValidPathCondition(p)
+      case Plus(p0, p1) => pcVisible(p0) && pcVisible(p1)
+      case Minus(p0, p1) => pcVisible(p0) && pcVisible(p1)
+      case Times(p0, p1) => pcVisible(p0) && pcVisible(p1)
+      case Div(p0, p1) => pcVisible(p0) && pcVisible(p1)
+      case Mod(p0, p1) => pcVisible(p0) && pcVisible(p1)
+      case BuiltinEquals(p0, p1) => pcVisible(p0) && pcVisible(p1)
+      case Less(p0, p1) => pcVisible(p0) && pcVisible(p1)
+      case AtMost(p0, p1) => pcVisible(p0) && pcVisible(p1)
+      case Greater(p0, p1) => pcVisible(p0) && pcVisible(p1)
+      case AtLeast(p0, p1) => pcVisible(p0) && pcVisible(p1)
+      case Not(p) => pcVisible(p)
       case _ => true
     }
 
@@ -420,8 +432,9 @@ object SymbExLogger {
       case _ => true
     }
 
-  def formatPathConditions(pcs: InsertionOrderedSet[Term]): String = {
-    pcs.filter(isValidPathCondition).map(formatTerm).mkString(", ")
+  def formatPcs(oldPcs: InsertionOrderedSet[Term], newPcs: InsertionOrderedSet[Term]): String = {
+    val added = for (pc <- newPcs if !oldPcs.exists(_ == pc)) yield pc
+    added.filter(pcVisible).map(formatTerm).mkString(", ")
   }
 
   /** Path to the file that is being executed. Is used for UnitTesting. **/
