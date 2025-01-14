@@ -420,10 +420,13 @@ object executor extends ExecutionRules with Immutable {
             consumes(s0, invs, e => LoopInvariantNotPreserved(e), v)((s1, _, v1) => {
               SymbExLogger.currentLog().closeScope(sepIdentifier)
               val memberRecord = SymbExLogger.currentLog().main
-              val parentMethod = memberRecord.value.asInstanceOf[ast.Method]
-              val sepIdentifier2 = SymbExLogger.currentLog().openScope(
-                new EndRecord(parentMethod, s1, v1.decider.pcs))
-              SymbExLogger.currentLog().closeScope(sepIdentifier2)
+              // if symbolic execution logger is off memberRecord will be null
+              if (memberRecord != null) {
+                val parentMethod = memberRecord.value.asInstanceOf[ast.Method]
+                val sepIdentifier2 = SymbExLogger.currentLog().openScope(
+                  new EndRecord(parentMethod, s1, v1.decider.pcs))
+                SymbExLogger.currentLog().closeScope(sepIdentifier2)
+              }
               Success()})
         }
 
