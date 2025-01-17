@@ -302,7 +302,7 @@ object SymbExLogger {
 
   var errors: Seq[AbstractError] = Seq.empty
   // we can have a single global snaps because fresh Vars starting with $t are globally unique
-  var snaps = mutable.Map[Term, BasicChunk]()
+  val snaps = mutable.Map[Term, BasicChunk]()
 
   def formatTerm(term: Term): String =
     term match {
@@ -435,6 +435,41 @@ object SymbExLogger {
   def formatPcs(oldPcs: InsertionOrderedSet[Term], newPcs: InsertionOrderedSet[Term]): String = {
     val added = for (pc <- newPcs if !oldPcs.exists(_ == pc)) yield pc
     added.filter(pcVisible).map(formatTerm).mkString(", ")
+  }
+
+  // while loops are uniquely identified by their invariants, this is needed
+  // to find the position of the while loops for displaying the state when
+  // entering and leaving the loop
+  val whileLoops = mutable.Map[ast.Exp, ast.Stmt]()
+
+  def populateWhileLoops(stmts: Seq[ast.Stmt]): Unit = {
+    for (stmt <- stmts) {
+      stmt match {
+        case ast.NewStmt(lhs, fields) =>
+        case _: ast.AbstractAssign =>
+        case ast.MethodCall(methodName, args, targets) =>
+        case ast.Exhale(exp) =>
+        case ast.Inhale(exp) =>
+        case ast.Assert(exp) =>
+        case ast.Assume(exp) =>
+        case ast.Fold(acc) =>
+        case ast.Unfold(acc) =>
+        case ast.Package(wand, proofScript) =>
+        case ast.Apply(exp) =>
+        case ast.Seqn(ss, scopedDecls) =>
+          populateWhileLoops(ss)
+        case ast.If(cond, thn, els) =>
+          populateWhileLoops(thn.ss)
+          populateWhileLoops(els.ss)
+        case ast.While(cond, invs, body) =>
+          assert(invs.length == 1)
+          whileLoops += invs.head -> stmt
+        case ast.Label(name, invs) =>
+        case ast.Goto(target) =>
+        case ast.LocalVarDeclStmt(decl) =>
+        case _: ast.ExtensionStmt =>
+      }
+    }
   }
 
   /** Path to the file that is being executed. Is used for UnitTesting. **/

@@ -15,7 +15,7 @@ import viper.silicon.decider.Decider
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data.EndRecord
 import viper.silicon.logger.records.data.WellformednessCheckRecord
-import viper.silicon.rules.{consumer, executionFlowController, executor, producer, wellFormedness}
+import viper.silicon.rules.{consumer, executionFlowController, executor, wellFormedness}
 import viper.silicon.state.{Heap, State, Store}
 import viper.silicon.state.State.OldHeaps
 import viper.silicon.verifier.{Verifier, VerifierComponent}
@@ -31,7 +31,6 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
 
   object methodSupporter extends MethodVerificationUnit with StatefulComponent {
     import executor._
-    import producer._
     import consumer._
     import wellFormedness._
 
@@ -96,7 +95,7 @@ trait DefaultMethodVerificationUnitProvider extends VerifierComponent { v: Verif
             && {
                executionFlowController.locally(s2a, v2)((s3, v3) => {
                   exec(s3, body, v3)((s4, v4) => {
-                    val sepIdentifier = SymbExLogger.currentLog().openScope(new EndRecord(method, s4, v4.decider.pcs))
+                    val sepIdentifier = SymbExLogger.currentLog().openScope(new EndRecord(s4, v4.decider.pcs))
                     consumes(s4, posts, postViolated, v4)((_, _, _) => {
                       SymbExLogger.currentLog().closeScope(sepIdentifier)
                       Success()

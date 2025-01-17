@@ -12,8 +12,8 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 
-class EndRecord(v: ast.Method, s: State, p: PathConditionStack) extends DataRecord {
-  val value: ast.Method = v
+class EndRecord(s: State, p: PathConditionStack) extends DataRecord {
+  val value: ast.Node = null
   val state: State = s
   val pcs: InsertionOrderedSet[Term] = if (p != null) p.assumptions else null
 

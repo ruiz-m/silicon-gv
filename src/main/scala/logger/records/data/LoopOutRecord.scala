@@ -12,13 +12,10 @@ import viper.silicon.state.State
 import viper.silicon.state.terms.Term
 import viper.silver.ast
 
-class LoopOutRecord(poz: ast.Position, s: State, p: PathConditionStack) extends DataRecord {
-  // taking the position of the first invariant is not very elegant
-  // but it works for now
-  val value: ast.Node = null
+class LoopOutRecord(inv: ast.Exp, s: State, p: PathConditionStack) extends DataRecord {
+  val value: ast.Exp = inv
   val state: State = s
   val pcs: InsertionOrderedSet[Term] = if (p != null) p.assumptions else null
-  val pos: ast.Position = poz
 
   override val toTypeString: String = "loop out"
 }

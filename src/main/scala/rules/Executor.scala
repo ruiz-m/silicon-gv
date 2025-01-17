@@ -15,7 +15,6 @@ import viper.silver.{ast, cfg}
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.decider.RecordedPathConditions
 import viper.silicon.interfaces._
-import viper.silicon.interfaces.state.{NonQuantifiedChunk}
 import viper.silicon.logger.SymbExLogger
 import viper.silicon.logger.records.data._
 import viper.silicon.resources.FieldID
@@ -291,9 +290,10 @@ object executor extends ExecutionRules with Immutable {
         sys.error(s"Unexpected block: $block")
 
       case block @ cfg.LoopHeadBlock(invs, stmts) =>
-        // taking the position of the first invariant is not very elegant
-        // but it works for now
-        val firstInvPos = if (invs.nonEmpty) { invs.head.pos } else { ast.NoPosition }
+        // every loop should have exactly one invariant, which may be an And
+        // we use the first invariant in invs because invs is a Seq[ast.Exp]
+        // and a Seq may be mutable
+        assert(invs.length == 1)
         incomingEdgeKind match {
           case cfg.Kind.In =>
             /* We've reached a loop head block via an in-edge. Steps to perform:
@@ -307,7 +307,7 @@ object executor extends ExecutionRules with Immutable {
              *   - Follow the outgoing edges
              */
             val sepIdentifier = SymbExLogger.currentLog().openScope(
-              new LoopInRecord(firstInvPos, s, v.decider.pcs))
+              new LoopInRecord(invs.head, s, v.decider.pcs))
 
             /* Havoc local variables that are assigned to in the loop body */
             val wvs = s.methodCfg.writtenVars(block)
@@ -415,18 +415,13 @@ object executor extends ExecutionRules with Immutable {
             eval(s0, edgeConditions.head, IfFailed(edgeConditions.head), v)((_, _, _) => 
               Success())
             val sepIdentifier = SymbExLogger.currentLog().openScope(
-              new LoopOutRecord(firstInvPos, s0, v.decider.pcs))
+              new LoopOutRecord(invs.head, s0, v.decider.pcs))
             // consume the loop invariant
             consumes(s0, invs, e => LoopInvariantNotPreserved(e), v)((s1, _, v1) => {
               SymbExLogger.currentLog().closeScope(sepIdentifier)
-              val memberRecord = SymbExLogger.currentLog().main
-              // if symbolic execution logger is off memberRecord will be null
-              if (memberRecord != null) {
-                val parentMethod = memberRecord.value.asInstanceOf[ast.Method]
-                val sepIdentifier2 = SymbExLogger.currentLog().openScope(
-                  new EndRecord(parentMethod, s1, v1.decider.pcs))
-                SymbExLogger.currentLog().closeScope(sepIdentifier2)
-              }
+              val sepIdentifier2 = SymbExLogger.currentLog().openScope(
+                new EndRecord(s1, v1.decider.pcs))
+              SymbExLogger.currentLog().closeScope(sepIdentifier2)
               Success()})
         }
 
