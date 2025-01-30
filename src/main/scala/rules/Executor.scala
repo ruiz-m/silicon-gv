@@ -313,7 +313,21 @@ object executor extends ExecutionRules with Immutable {
             val wvs = s.methodCfg.writtenVars(block)
               /* TODO: BUG: Variables declared by LetWand show up in this list, but shouldn't! */
 
-            val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => map.updated(x, v.decider.fresh(x))))
+            val gBody = Store(wvs.foldLeft(s.g.values)((map, x) => {
+              /* 2025-01-29 Long:
+               * havoc variables will get a new suffix and will not show up
+               * in freshPositions, so we need to add them to freshPositions
+               */
+              val freshVar = v.decider.fresh(x)
+              val existingTerm = map(x)
+              /* if the variable cannot be found in freshPositions, it means
+               * that it has not been assigned to yet
+               */
+              if (SymbExLogger.enabled && SymbExLogger.freshPositions.contains(existingTerm)) {
+                SymbExLogger.freshPositions += freshVar -> SymbExLogger.freshPositions(existingTerm)
+              }
+              map.updated(x, freshVar)
+            } ))
             val sBody = s.copy(isImprecise = false,
                                g = gBody,
                                h = Heap(),
@@ -488,7 +502,7 @@ object executor extends ExecutionRules with Immutable {
 
       case ass @ ast.LocalVarAssign(x, rhs) =>
         eval(s, rhs, AssignmentFailed(ass), v)((s1, tRhs, v1) => {
-          val t = ssaifyRhs(tRhs, x.name, x.typ, v)
+          val t = ssaifyRhs(tRhs, x.name, x.typ, v, ass.pos)
           Q(s1.copy(g = s1.g + (x, t)), v1)
         })
 
@@ -554,7 +568,7 @@ object executor extends ExecutionRules with Immutable {
 
               // TODO;EXTRA CHECK ISSUE(S): We assume the Ref is !== null here
               v3.decider.assume(tRcvr !== Null())
-              val tSnap = ssaifyRhs(tRhs, field.name, field.typ, v3)
+              val tSnap = ssaifyRhs(tRhs, field.name, field.typ, v3, ass.pos)
               val id = BasicChunkIdentifier(field.name)
               val newChunk = BasicChunk(FieldID, id, Seq(tRcvr), tSnap, FullPerm())
 
@@ -863,9 +877,13 @@ object executor extends ExecutionRules with Immutable {
     executed
   }
 
-   private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier): Term = {
+   private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier, pos: ast.Position): Term = {
      rhs match {
-       case _: Var | _: Literal =>
+       /* 2025-01-29 Long:
+        * The following line used to be
+        * case _: Var | _: Literal =>
+        */
+       case _: Literal =>
          rhs
 
        case _  =>
@@ -881,6 +899,13 @@ object executor extends ExecutionRules with Immutable {
           */
          val t = v.decider.fresh(name, v.symbolConverter.toSort(typ))
          v.decider.assume(t === rhs)
+         /* 2025-01-29 Long:
+          * record position where the Var was freshened in freshPositions
+          * freshPositions should not contain this Var yet
+          */
+         if (SymbExLogger.enabled) {
+           SymbExLogger.freshPositions += t -> pos
+         }
 
          t
      }

@@ -301,19 +301,38 @@ object SymbExLogger {
   def m(symbLog: SymbLog): MemberRecord = symbLog.main
 
   var errors: Seq[AbstractError] = Seq.empty
+
   // we can have a single global snaps because fresh Vars starting with $t are globally unique
   val snaps = mutable.Map[Term, BasicChunk]()
+  val freshPositions = mutable.Map[Term, ast.Position]()
+  // while loops are uniquely identified by their invariants, this is needed
+  // to find the position of the while loops for displaying the state when
+  // entering and leaving the loop
+  val whileLoops = mutable.Map[ast.Exp, ast.Stmt]()
 
   def formatTerm(term: Term): String =
     term match {
       case Var(SuffixedIdentifier(prefix, _, _), _) if prefix == "$t" =>
         formatBasicChunk(snaps(term), true)
-      case Var(SuffixedIdentifier(prefix, _, suffix), _) => prefix + "`" + suffix.split('@')(0)
+      case Var(SuffixedIdentifier(prefix, _, _), _) if !prefix.contains("$result") && prefix.contains("$") =>
+        if (freshPositions.contains(term) && freshPositions(term).isInstanceOf[ast.TranslatedPosition]) {
+          val pos = freshPositions(term).asInstanceOf[ast.TranslatedPosition].pos
+          formatBasicChunk(snaps(term), true) + "@" + pos.line.toString
+        } else {
+          formatBasicChunk(snaps(term), true)
+        }
+      case Var(SuffixedIdentifier(prefix, _, suffix), _) =>
+        if (freshPositions.contains(term) && freshPositions(term).isInstanceOf[ast.TranslatedPosition]) {
+          val pos = freshPositions(term).asInstanceOf[ast.TranslatedPosition].pos
+          prefix + "@" + pos.line.toString
+        } else {
+          prefix
+        }
       case SortWrapper(_, _) => formatBasicChunk(snaps(term), true)
       case Null() => "null"
       case True() => "true"
       case False() => "false"
-      case IntLiteral(n) => n.toString()
+      case IntLiteral(n) => n.toString
       case Plus(p0, p1) => "(" + formatTerm(p0) + " + " + formatTerm(p1) + ")"
       case Minus(p0, p1) => "(" + formatTerm(p0) + " - " + formatTerm(p1) + ")"
       case Times(p0, p1) => "(" + formatTerm(p0) + " * " + formatTerm(p1) + ")"
@@ -325,6 +344,9 @@ object SymbExLogger {
       case Greater(p0, p1) => "(" + formatTerm(p0) + " > " + formatTerm(p1) + ")"
       case AtLeast(p0, p1) => "(" + formatTerm(p0) + " >= " + formatTerm(p1) + ")"
       case Not(p) => "(" + "!" + formatTerm(p) + ")"
+      case Or(ts) => "(" + ts.map(formatTerm).mkString(" || ") + ")"
+      case And(ts) => "(" + ts.map(formatTerm).mkString(" && ") + ")"
+      case Implies(p0, p1) => "(" + formatTerm(p0) + " ==> " + formatTerm(p1) + ")"
       case _ => "'" + term.toString + "'"
     }
 
@@ -332,10 +354,11 @@ object SymbExLogger {
     val s = basicChunk.snap match {
       case Unit => " == " + basicChunk.snap.toString
       case Null() => " == null"
-      case IntLiteral(n) => " == " + n.toString()
+      case IntLiteral(n) => " == " + n.toString
       case True() => " == true"
       case False() => " == false"
       case Var(SuffixedIdentifier(prefix, _, _), _) if prefix == "$t" => ""
+      case Var(SuffixedIdentifier(prefix, _, _), _) if !prefix.contains("$result") && prefix.contains("$") => ""
       case Var(SuffixedIdentifier(prefix, _, _), _) => " == " + prefix
       case _ => ""
     }
@@ -360,12 +383,14 @@ object SymbExLogger {
     }
   }
 
-  def populateSnaps(chunks: Iterable[Chunk]): Unit =
+  def populateSnaps(chunks: Seq[Chunk]): Unit =
     for (chunk <- chunks) {
       chunk match {
         case basicChunk: BasicChunk =>
           basicChunk.snap match {
             case Var(SuffixedIdentifier(prefix, _, _), _) if prefix == "$t" =>
+              snaps += basicChunk.snap -> basicChunk
+            case Var(SuffixedIdentifier(prefix, _, _), _) if !prefix.contains("$result") && prefix.contains("$")  =>
               snaps += basicChunk.snap -> basicChunk
             case SortWrapper(wrappedTerm, sort) =>
               snaps += basicChunk.snap -> basicChunk
@@ -375,13 +400,13 @@ object SymbExLogger {
       }
     }
 
-  def diffChunks(oldChunks: Iterable[Chunk], newChunks: Iterable[Chunk]): (Iterable[Chunk], Iterable[Chunk]) = {
+  def diffChunks(oldChunks: Seq[Chunk], newChunks: Seq[Chunk]): (Seq[Chunk], Seq[Chunk]) = {
     val consumed = for (chunk <- oldChunks if !newChunks.exists(_ == chunk)) yield chunk
     val produced = for (chunk <- newChunks if !oldChunks.exists(_ == chunk)) yield chunk
     (consumed, produced)
   }
 
-  def formatChunks(chunks: Iterable[Chunk]): String = {
+  def formatChunks(chunks: Seq[Chunk]): String = {
     var result = ""
     for (chunk <- chunks) {
       chunk match {
@@ -393,9 +418,8 @@ object SymbExLogger {
     result
   }
 
-  def formatDiff(oldChunks: Iterable[Chunk], newChunks: Iterable[Chunk]): (String, String) = {
+  def formatDiff(oldChunks: Seq[Chunk], newChunks: Seq[Chunk]): (String, String) = {
     val (consumed, produced) = diffChunks(oldChunks, newChunks)
-    populateSnaps(newChunks)
     (formatChunks(consumed), formatChunks(produced))
   }
 
@@ -423,6 +447,9 @@ object SymbExLogger {
       case Greater(p0, p1) => pcVisible(p0) && pcVisible(p1)
       case AtLeast(p0, p1) => pcVisible(p0) && pcVisible(p1)
       case Not(p) => pcVisible(p)
+      case Or(ts) => ts.map(pcVisible).reduce((x, y) => x && y)
+      case And(ts) => ts.map(pcVisible).reduce((x, y) => x && y)
+      case Implies(p0, p1) => pcVisible(p0) && pcVisible(p1)
       case _ => true
     }
 
@@ -437,10 +464,8 @@ object SymbExLogger {
     added.filter(pcVisible).map(formatTerm).mkString(", ")
   }
 
-  // while loops are uniquely identified by their invariants, this is needed
-  // to find the position of the while loops for displaying the state when
-  // entering and leaving the loop
-  val whileLoops = mutable.Map[ast.Exp, ast.Stmt]()
+  def formatStore(g: Store): Seq[(String, String)] =
+    g.values.map({ case (v, term) => (v.name, formatTerm(term)) }).toList
 
   def populateWhileLoops(stmts: Seq[ast.Stmt]): Unit = {
     for (stmt <- stmts) {
@@ -470,6 +495,12 @@ object SymbExLogger {
         case _: ast.ExtensionStmt =>
       }
     }
+  }
+
+  def resetMaps(): Unit = {
+    snaps.clear()
+    freshPositions.clear()
+    whileLoops.clear()
   }
 
   /** Path to the file that is being executed. Is used for UnitTesting. **/
