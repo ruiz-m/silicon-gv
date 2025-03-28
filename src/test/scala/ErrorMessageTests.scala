@@ -3,17 +3,28 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 //
 // Copyright (c) 2011-2019 ETH Zurich.
+<<<<<<< HEAD
 /*
 package viper.silicon.tests
 
 import org.scalatest.FunSuite
+=======
+
+package viper.silicon.tests
+
+import org.scalatest.funsuite.AnyFunSuite
+>>>>>>> upstream/master
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter._
 import viper.silver.ast.utility._
 import viper.silver.frontend.SilFrontend
 import viper.silver.verifier.errors._
 
+<<<<<<< HEAD
 class ErrorMessageTests extends FunSuite {
+=======
+class ErrorMessageTests extends AnyFunSuite {
+>>>>>>> upstream/master
   test("MeetingExample") {
     val filePrefix = "errorMessageTests/misc/"
     val files = Seq("simple")
@@ -88,9 +99,14 @@ class ErrorMessageTests extends FunSuite {
 
   test("MethodInlining") {
     // Careful: Don't use old inside postcondition. It is not yet supported. maybe I will update the testcase
+<<<<<<< HEAD
     // removed test "withfields" bcz had exhale
     val filePrefix = "errorMessageTests/methodInlining/"
     val files = Seq("simple" , "withArgs", "withArgsNRes")
+=======
+    val filePrefix = "errorMessageTests/methodInlining/"
+    val files = Seq("simple" , "withArgs", "withArgsNRes", "withFields")
+>>>>>>> upstream/master
     val frontend = tests.instantiateFrontend()
 
     val replaceStrategy = ViperStrategy.Context[Map[Exp, Exp]]({
@@ -103,7 +119,11 @@ class ErrorMessageTests extends FunSuite {
          * error back-transformer saying that `n` is to be reported.
          */
         val (pos, info, _) = n.getPrettyMetadata
+<<<<<<< HEAD
         (c.c(l).meta = ((pos, info, NodeTrafo(n))), c)
+=======
+        (c.c(l).withMeta(pos, info, NodeTrafo(n)), c)
+>>>>>>> upstream/master
 
     }, Map.empty[Exp, Exp])
 
@@ -126,7 +146,11 @@ class ErrorMessageTests extends FunSuite {
         val exPres = mDecl.pres.map(replaceStrategy.execute[Exp](_, context)).map(x => Exhale(x)(x.pos, x.info, preError(m)))
 
         // Create an inhale statement for every postcondition, replace parameters with arguments and replace result parameters with receivers
+<<<<<<< HEAD
         val replacer2: Map[Exp, Exp] = mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap ++ replacer
+=======
+        val replacer2: Map[Exp, Exp] = (mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap ++ replacer).to(Map)
+>>>>>>> upstream/master
         val context2 = new PartialContextC[Node, Map[Exp, Exp]](replacer2)
         val inPosts = mDecl.posts.map(replaceStrategy.execute[Exp](_, context2)).map(x => Inhale(x)(x.pos, x.info, postError(x, mDecl)))
 
@@ -158,4 +182,9 @@ class ErrorMessageTests extends FunSuite {
     assert(result, "Files are not equivalent after transformation")
   }
 }
+<<<<<<< HEAD
 */
+=======
+
+
+>>>>>>> upstream/master

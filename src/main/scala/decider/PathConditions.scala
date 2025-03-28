@@ -6,6 +6,7 @@
 
 package viper.silicon.decider
 
+<<<<<<< HEAD
 import viper.silver.ast.Exp
 import viper.silicon.common.collections.immutable.InsertionOrderedSet
 import viper.silicon.Stack
@@ -14,6 +15,16 @@ import viper.silicon.state.terms.{And, Decl, Equals, Implies, Quantification, Qu
 import viper.silicon.utils
 import viper.silicon.utils.Counter
 
+=======
+import viper.silicon.debugger.DebugExp
+import viper.silicon.Stack
+import viper.silicon.common.collections.immutable.InsertionOrderedSet
+import viper.silicon.state.terms._
+import viper.silicon.utils.Counter
+import viper.silicon.verifier.Verifier
+import viper.silver.ast
+import viper.silver.ast.TrueLit
+>>>>>>> upstream/master
 /*
  * Interfaces
  */
@@ -25,6 +36,7 @@ import viper.silicon.utils.Counter
 
 trait RecordedPathConditions {
   def branchConditions: Stack[Term]
+<<<<<<< HEAD
   def branchConditionsSemanticAstNodes: Stack[Exp]
   def branchConditionsAstNodes: Stack[Exp]
   def branchConditionsOrigins: Stack[Option[CheckPosition]]
@@ -32,16 +44,33 @@ trait RecordedPathConditions {
   def assumptions: InsertionOrderedSet[Term]
   def declarations: InsertionOrderedSet[Decl]
 
+=======
+  def branchConditionExps: Stack[(ast.Exp, Option[ast.Exp])]
+  def assumptions: InsertionOrderedSet[Term]
+  def assumptionExps: InsertionOrderedSet[DebugExp]
+  def definingAssumptions: InsertionOrderedSet[Term]
+  def definingAssumptionExps: InsertionOrderedSet[DebugExp]
+  def declarations: InsertionOrderedSet[Decl]
+
+  def definitionsOnly: RecordedPathConditions
+
+>>>>>>> upstream/master
   def contains(assumption: Term): Boolean
 
   def conditionalized: Seq[Term]
 
+<<<<<<< HEAD
+=======
+  def conditionalizedExp: Seq[DebugExp]
+
+>>>>>>> upstream/master
   def quantified(quantifier: Quantifier,
                  qvars: Seq[Var],
                  triggers: Seq[Trigger],
                  name: String,
                  isGlobal: Boolean,
                  ignore: Term /* TODO: Hack, implement properly */)
+<<<<<<< HEAD
                 : (Seq[Quantification], Seq[Quantification])
 
   // If the heap does not contain a mapping for a snapshot(?) value, the path
@@ -71,10 +100,41 @@ trait PathConditionStack extends RecordedPathConditions {
     conditionAstNode: Exp,
     conditionOrigin: Option[CheckPosition]): Unit
   def add(assumption: Term): Unit
+=======
+                : (Seq[Term], Seq[Quantification])
+
+  def quantifiedExp(quantifier: Quantifier,
+                    qvars: Seq[ast.Exp],
+                    tQvars: Seq[Var],
+                    triggers: Seq[ast.Trigger],
+                    tTriggers: Seq[Trigger],
+                    name: String,
+                    isGlobal: Boolean,
+                    ignore: Term /* TODO: Hack, implement properly, see quantified above */)
+  : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp])
+}
+
+trait PathConditionStack extends RecordedPathConditions {
+  def setCurrentBranchCondition(condition: Term, conditionExp: (ast.Exp, Option[ast.Exp])): Unit
+  def add(assumption: Term): Unit
+  def addDefinition(assumption: Term): Unit
+>>>>>>> upstream/master
   def add(declaration: Decl): Unit
   def pushScope(): Unit
   def popScope(): Unit
   def mark(): Mark
+<<<<<<< HEAD
+=======
+  def popUntilMark(mark: Mark): Unit
+
+  def startDebugSubExp(): Unit
+  def finishDebugSubExp(description : String): Unit
+
+  def addDebugExp(e: DebugExp): Unit
+
+  def addNonGlobalDebugExp(assumptionDebugExp: DebugExp) : Unit
+  def addGlobalDebugExp(assumptionDebugExp: DebugExp) : Unit
+>>>>>>> upstream/master
   def after(mark: Mark): RecordedPathConditions
   def isEmpty: Boolean
   def duplicate(): PathConditionStack
@@ -86,6 +146,7 @@ trait PathConditionStack extends RecordedPathConditions {
  */
 
 private class PathConditionStackLayer
+<<<<<<< HEAD
     extends Mutable
        with Cloneable {
 
@@ -112,10 +173,63 @@ private class PathConditionStackLayer
     assert(_branchCondition.isEmpty,
         s"Branch condition is already set (to ${_branchCondition.get}), "
       + s"won't override (with $condition).")
+=======
+    extends Cloneable {
+
+  private var _branchCondition: Option[Term] = None
+  private var _branchConditionExp: Option[(ast.Exp, Option[ast.Exp])] = None
+  private var _globalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
+  private var _nonGlobalAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
+  private var _globalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
+  private var _nonGlobalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
+  private var _globalDefiningAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
+  private var _nonGlobalDefiningAssumptions: InsertionOrderedSet[Term] = InsertionOrderedSet.empty
+  private var _globalDefiningAssumptionDebugExps: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
+  private var _nonGlobalDefiningAssumptionDebugExps: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
+  private var _declarations: InsertionOrderedSet[Decl] = InsertionOrderedSet.empty
+
+  def branchCondition: Option[Term] = _branchCondition
+  def branchConditionExp: Option[(ast.Exp, Option[ast.Exp])] = _branchConditionExp
+  def globalAssumptions: InsertionOrderedSet[Term] = _globalAssumptions
+  def globalDefiningAssumptions: InsertionOrderedSet[Term] = _globalDefiningAssumptions
+  def nonGlobalDefiningAssumptions: InsertionOrderedSet[Term] = _nonGlobalDefiningAssumptions
+  def nonGlobalAssumptions: InsertionOrderedSet[Term] = _nonGlobalAssumptions
+  def globalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = _globalAssumptionDebugExps
+  def globalDefiningAssumptionDebugExps: InsertionOrderedSet[DebugExp] = _globalDefiningAssumptionDebugExps
+  def nonGlobalDefiningAssumptionDebugExps: InsertionOrderedSet[DebugExp] = _nonGlobalDefiningAssumptionDebugExps
+  def nonGlobalAssumptionDebugExps: InsertionOrderedSet[DebugExp] = _nonGlobalAssumptionDebugExps ++ debugExpStack.flatten
+  def declarations: InsertionOrderedSet[Decl] = _declarations
+
+  def assumptions: InsertionOrderedSet[Term] = globalAssumptions ++ nonGlobalAssumptions
+  def assumptionDebugExps:  InsertionOrderedSet[DebugExp] = globalAssumptionDebugExps ++ nonGlobalAssumptionDebugExps
+
+  def pathConditions: InsertionOrderedSet[Term] = assumptions ++ branchCondition
+
+  var debugExpStack : Stack[InsertionOrderedSet[DebugExp]] = Stack.empty
+  def definitionsOnly(): PathConditionStackLayer = {
+    val result = new PathConditionStackLayer
+    result._globalAssumptions = _globalDefiningAssumptions
+    result._globalDefiningAssumptions = _globalDefiningAssumptions
+    result._nonGlobalAssumptions = _nonGlobalDefiningAssumptions
+    result._nonGlobalDefiningAssumptions = _nonGlobalDefiningAssumptions
+    result._declarations = _declarations
+    result._globalAssumptionDebugExps = _globalDefiningAssumptionDebugExps
+    result._globalDefiningAssumptionDebugExps = _globalDefiningAssumptionDebugExps
+    result._nonGlobalAssumptionDebugExps = _nonGlobalDefiningAssumptionDebugExps
+    result._nonGlobalDefiningAssumptionDebugExps = _nonGlobalDefiningAssumptionDebugExps
+    result
+  }
+
+  def branchCondition_=(condition: Term): Unit = {
+    assert(_branchCondition.isEmpty,
+             s"Branch condition is already set (to ${_branchCondition.get}), "
+           + s"won't override (with $condition).")
+>>>>>>> upstream/master
 
     _branchCondition = Some(condition)
   }
 
+<<<<<<< HEAD
   def branchConditionSemanticAstNode_=(conditionSemanticAstNode: Exp) {
 
     assert(_branchConditionSemanticAstNode.isEmpty,
@@ -141,6 +255,14 @@ private class PathConditionStackLayer
     + s"refusing to override (with $conditionOrigin).")
 
     _branchConditionOrigin = Some(conditionOrigin)
+=======
+  def branchConditionExp_=(condition: (ast.Exp, Option[ast.Exp])): Unit = {
+    assert(_branchConditionExp.isEmpty,
+      s"Branch condition is already set (to ${_branchConditionExp.get}), "
+        + s"won't override (with $condition).")
+
+    _branchConditionExp = Some(condition)
+>>>>>>> upstream/master
   }
 
   def add(assumption: Term): Unit = {
@@ -150,11 +272,71 @@ private class PathConditionStackLayer
 
     /* TODO: Don't record branch conditions as assumptions */
 
+<<<<<<< HEAD
     assumption match {
       case quantification: Quantification if quantification.isGlobal =>
         _globalAssumptions += quantification
       case _ =>
         _nonGlobalAssumptions += assumption
+=======
+    if (PathConditions.isGlobal(assumption)) {
+      _globalAssumptions += assumption
+    } else
+      _nonGlobalAssumptions += assumption
+  }
+
+  def addNonGlobalDebugExp(debugExp : DebugExp): Unit = {
+    _nonGlobalAssumptionDebugExps += debugExp
+  }
+
+  def addGlobalDebugExp(debugExp: DebugExp): Unit = {
+    _globalAssumptionDebugExps += debugExp
+  }
+
+  def startDebugSubExp(): Unit = {
+    debugExpStack = InsertionOrderedSet[DebugExp]().empty +: debugExpStack
+  }
+
+  private def popDebugSubExp(): InsertionOrderedSet[DebugExp] = {
+    val res = debugExpStack.head
+    debugExpStack = debugExpStack.tail
+    res
+  }
+
+  def finishDebugSubExp(description: String): Unit = {
+    val children = popDebugSubExp()
+    if (children.nonEmpty) {
+      val debugExp = DebugExp.createInstance(description = description, children = children)
+      addDebugExp(debugExp)
+    }
+  }
+
+  def addDebugExp(e: DebugExp): Unit = {
+    if (e.isGlobal) {
+      addGlobalDebugExp(e)
+    } else {
+      if (debugExpStack.isEmpty) {
+        addNonGlobalDebugExp(e)
+      } else {
+        // DebugSubExp -> will be attached to another DebugExp later on
+        val d = debugExpStack.head + e
+        debugExpStack = d +: debugExpStack.tail
+      }
+    }
+  }
+
+  def addDefinition(assumption: Term): Unit = {
+    assert(
+      !assumption.isInstanceOf[And],
+      s"Unexpectedly found a conjunction (should have been split): $assumption")
+
+    if (PathConditions.isGlobal(assumption)) {
+      _globalAssumptions += assumption
+      _globalDefiningAssumptions += assumption
+    } else {
+      _nonGlobalAssumptions += assumption
+      _nonGlobalDefiningAssumptions += assumption
+>>>>>>> upstream/master
     }
   }
 
@@ -165,6 +347,7 @@ private class PathConditionStackLayer
       !pathCondition.isInstanceOf[And],
       s"Unexpectedly found a conjunction (should have been split): $pathCondition")
 
+<<<<<<< HEAD
     pathCondition match {
       case quantification: Quantification if quantification.isGlobal =>
         /* Assumption: globals are never used as branch conditions */
@@ -172,6 +355,13 @@ private class PathConditionStackLayer
       case _ =>
         _nonGlobalAssumptions.contains(pathCondition) || _branchCondition.contains(pathCondition)
     }
+=======
+    if (PathConditions.isGlobal(pathCondition))
+      /* Assumption: globals are never used as branch conditions */
+      _globalAssumptions.contains(pathCondition)
+    else
+      _nonGlobalAssumptions.contains(pathCondition) || _branchCondition.contains(pathCondition)
+>>>>>>> upstream/master
   }
 
   override def clone(): AnyRef = {
@@ -184,6 +374,7 @@ private trait LayeredPathConditionStackLike {
   protected def branchConditions(layers: Stack[PathConditionStackLayer]): Stack[Term] =
     layers.flatMap(_.branchCondition)
 
+<<<<<<< HEAD
   protected def branchConditionsSemanticAstNodes(layers:
     Stack[PathConditionStackLayer]): Stack[Exp] =
       layers.flatMap(_.branchConditionSemanticAstNode)
@@ -193,10 +384,25 @@ private trait LayeredPathConditionStackLike {
 
   protected def branchConditionsOrigins(layers: Stack[PathConditionStackLayer]): Stack[Option[CheckPosition]] =
     layers.flatMap(_.branchConditionOrigin)
+=======
+  protected def branchConditionExps(layers: Stack[PathConditionStackLayer]): Stack[(ast.Exp, Option[ast.Exp])] =
+    layers.flatMap(_.branchConditionExp)
+>>>>>>> upstream/master
 
   protected def assumptions(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Term] =
     InsertionOrderedSet(layers.flatMap(_.assumptions)) // Note: Performance?
 
+<<<<<<< HEAD
+=======
+  protected def assumptionExps(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[DebugExp] =
+    InsertionOrderedSet(layers.flatMap(_.assumptionDebugExps)) // Note: Performance?
+  protected def definingAssumptions(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Term] =
+    InsertionOrderedSet(layers.flatMap(_.globalDefiningAssumptions) ++ layers.flatMap(_.nonGlobalDefiningAssumptions)) // Note: Performance?
+
+  protected def definingAssumptionExps(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[DebugExp] =
+    InsertionOrderedSet(layers.flatMap(_.globalDefiningAssumptionDebugExps) ++ layers.flatMap(_.nonGlobalDefiningAssumptionDebugExps))
+
+>>>>>>> upstream/master
   protected def declarations(layers: Stack[PathConditionStackLayer]): InsertionOrderedSet[Decl] =
     InsertionOrderedSet(layers.flatMap(_.declarations)) // Note: Performance?
 
@@ -206,12 +412,59 @@ private trait LayeredPathConditionStackLike {
   protected def conditionalized(layers: Stack[PathConditionStackLayer]): Seq[Term] = {
     var unconditionalTerms = Vector.empty[Term]
     var conditionalTerms = Vector.empty[Term]
+<<<<<<< HEAD
 
     for (layer <- layers) {
       unconditionalTerms ++= layer.globalAssumptions
 
       conditionalTerms :+=
         Implies(layer.branchCondition.getOrElse(True()), And(layer.nonGlobalAssumptions))
+=======
+    var implicationLHS: Term = True
+
+    for (layer <- layers.reverseIterator) {
+      unconditionalTerms ++= layer.globalAssumptions
+
+      layer.branchCondition match {
+        case Some(condition) =>
+          implicationLHS = And(implicationLHS, condition)
+        case None =>
+      }
+
+      conditionalTerms :+=
+        Implies(implicationLHS, And(layer.nonGlobalAssumptions))
+    }
+
+    unconditionalTerms ++ conditionalTerms
+  }
+
+  protected def conditionalizedExp(layers: Stack[PathConditionStackLayer]): Seq[DebugExp] = {
+    var unconditionalTerms = Vector.empty[DebugExp]
+    var conditionalTerms = Vector.empty[DebugExp]
+    var implicationLHS: Term = True
+    var implicationLHSExp: ast.Exp = ast.TrueLit()()
+    var implicationLHSExpNew: ast.Exp = ast.TrueLit()()
+
+    for (layer <- layers.reverseIterator) {
+      unconditionalTerms ++= layer.globalAssumptionDebugExps
+
+      layer.branchConditionExp match {
+        case Some(condition) =>
+          implicationLHS = And(implicationLHS, layer.branchCondition.get)
+          implicationLHSExp = if (implicationLHSExp.equals(TrueLit()())) condition._1
+                              else ast.And(implicationLHSExp, condition._1)()
+          implicationLHSExpNew = if (implicationLHSExpNew.equals(TrueLit()())) condition._2.get
+          else ast.And(implicationLHSExpNew, condition._2.get)()
+        case None =>
+      }
+
+      if (layer.nonGlobalAssumptionDebugExps.nonEmpty && !implicationLHSExp.equals(TrueLit()())) {
+        conditionalTerms :+= DebugExp.createImplicationInstance(None, Some(implicationLHSExp), Some(implicationLHSExpNew),
+          Some(implicationLHS), false, layer.nonGlobalAssumptionDebugExps)
+      } else {
+        conditionalTerms ++= layer.nonGlobalAssumptionDebugExps
+      }
+>>>>>>> upstream/master
     }
 
     unconditionalTerms ++ conditionalTerms
@@ -224,21 +477,46 @@ private trait LayeredPathConditionStackLike {
                            name: String,
                            isGlobal: Boolean,
                            ignore: Term)
+<<<<<<< HEAD
                           : (Seq[Quantification], Seq[Quantification]) = {
 
     var globals = Vector.empty[Quantification]
+=======
+                          : (Seq[Term], Seq[Quantification]) = {
+
+    var globals = Vector.empty[Term]
+>>>>>>> upstream/master
     var nonGlobals = Vector.empty[Quantification]
 
     val ignores = ignore.topLevelConjuncts
 
     for (layer <- layers) {
+<<<<<<< HEAD
       globals ++= layer.globalAssumptions
+=======
+      val actualBranchCondition = layer.branchCondition.getOrElse(True)
+      val relevantNonGlobals = layer.nonGlobalAssumptions -- ignores
+      val (trueNonGlobals, additionalGlobals) = if (!actualBranchCondition.existsDefined{ case t if qvars.contains(t) => }) {
+        // The branch condition is independent of all quantified variables
+        // Any assumptions that are also independent of all quantified variables can be treated as global assumptions.
+        val (trueNonGlobals, unconditionalGlobals) = relevantNonGlobals.partition(a => a.existsDefined{ case t if qvars.contains(t) => })
+        (trueNonGlobals, unconditionalGlobals.map(Implies(actualBranchCondition, _)))
+      } else {
+        (relevantNonGlobals, Seq())
+      }
+
+      globals ++= layer.globalAssumptions ++ additionalGlobals
+>>>>>>> upstream/master
 
       nonGlobals :+=
         Quantification(
           quantifier,
           qvars,
+<<<<<<< HEAD
           And(layer.nonGlobalAssumptions -- ignores),
+=======
+          Implies(actualBranchCondition, And(trueNonGlobals)),
+>>>>>>> upstream/master
           triggers,
           name,
           isGlobal)
@@ -246,10 +524,51 @@ private trait LayeredPathConditionStackLike {
 
     (globals, nonGlobals)
   }
+<<<<<<< HEAD
+=======
+
+  def quantifiedExp(layers: Stack[PathConditionStackLayer],
+                    quantifier: Quantifier,
+                    qvars: Seq[ast.Exp],
+                    tQvars: Seq[Var],
+                    triggers: Seq[ast.Trigger],
+                    tTriggers: Seq[Trigger],
+                    name: String,
+                    isGlobal: Boolean,
+                    ignore: Term )
+                    : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
+    var globals = InsertionOrderedSet.empty[DebugExp]
+    var nonGlobals = InsertionOrderedSet.empty[DebugExp]
+
+    for (layer <- layers) {
+      globals ++= layer.globalAssumptionDebugExps
+
+      val branchConditionExp = layer.branchConditionExp
+        if (branchConditionExp.isDefined){
+          var quantBody: InsertionOrderedSet[DebugExp] = InsertionOrderedSet.empty
+          if (branchConditionExp.get._1.equals(ast.TrueLit()())) {
+            quantBody = layer.nonGlobalAssumptionDebugExps
+          } else {
+            quantBody = InsertionOrderedSet(DebugExp.createImplicationInstance(description = None, originalExp = Some(branchConditionExp.get._1), finalExp = Some(branchConditionExp.get._2.get), term = layer.branchCondition, isInternal_ = false,
+              children = layer.nonGlobalAssumptionDebugExps))
+          }
+
+          val quantDebugExp = DebugExp.createQuantifiedInstance(description=None, isInternal_ = false,
+            children = InsertionOrderedSet(quantBody), quantifier = quantifier.toString, qvars = qvars, tQvars = tQvars, triggers = triggers, tTriggers = tTriggers)
+          nonGlobals += quantDebugExp
+        } else {
+          nonGlobals += DebugExp.createInstance("quantifiedExp", layer.nonGlobalAssumptionDebugExps)
+        }
+    }
+
+    (globals, nonGlobals)
+  }
+>>>>>>> upstream/master
 }
 
 private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer])
     extends LayeredPathConditionStackLike
+<<<<<<< HEAD
        with RecordedPathConditions
        with Immutable {
 
@@ -258,11 +577,29 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
   val branchConditionsAstNodes: Stack[Exp] = branchConditionsAstNodes(from)
   val branchConditionsOrigins: Stack[Option[CheckPosition]] = branchConditionsOrigins(from)
   val assumptions: InsertionOrderedSet[Term] = assumptions(from)
+=======
+       with RecordedPathConditions {
+
+  val branchConditions: Stack[Term] = branchConditions(from)
+  val branchConditionExps: Stack[(ast.Exp, Option[ast.Exp])] = branchConditionExps(from)
+  val assumptions: InsertionOrderedSet[Term] = assumptions(from)
+  val assumptionExps: InsertionOrderedSet[DebugExp] = assumptionExps(from)
+  val definingAssumptions: InsertionOrderedSet[Term] = definingAssumptions(from)
+  val definingAssumptionExps: InsertionOrderedSet[DebugExp] = definingAssumptionExps(from)
+>>>>>>> upstream/master
   val declarations: InsertionOrderedSet[Decl] = declarations(from)
 
   def contains(assumption: Term): Boolean = contains(from, assumption)
 
   val conditionalized: Seq[Term] = conditionalized(from)
+<<<<<<< HEAD
+=======
+  lazy val conditionalizedExp: Seq[DebugExp] = conditionalizedExp(from)
+
+  def definitionsOnly(): RecordedPathConditions = {
+    new DefaultRecordedPathConditions(from.map(_.definitionsOnly))
+  }
+>>>>>>> upstream/master
 
   def quantified(quantifier: Quantifier,
                  qvars: Seq[Var],
@@ -270,19 +607,45 @@ private class DefaultRecordedPathConditions(from: Stack[PathConditionStackLayer]
                  name: String,
                  isGlobal: Boolean,
                  ignore: Term)
+<<<<<<< HEAD
                 : (Seq[Quantification], Seq[Quantification]) = {
 
     quantified(from, quantifier, qvars, triggers, name, isGlobal, ignore)
   }
+=======
+                : (Seq[Term], Seq[Quantification]) = {
+
+    quantified(from, quantifier, qvars, triggers, name, isGlobal, ignore)
+  }
+
+  def quantifiedExp(quantifier: Quantifier,
+                    qvars: Seq[ast.Exp],
+                    tQvars: Seq[Var],
+                    triggers: Seq[ast.Trigger],
+                    tTriggers: Seq[Trigger],
+                    name: String,
+                    isGlobal: Boolean,
+                    ignore: Term)
+                    : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
+
+    quantifiedExp(from, quantifier, qvars, tQvars, triggers, tTriggers, name, isGlobal, ignore)
+  }
+>>>>>>> upstream/master
 }
 
 private[decider] class LayeredPathConditionStack
     extends LayeredPathConditionStackLike
        with PathConditionStack
+<<<<<<< HEAD
        with Mutable
        with Cloneable {
 
   private var layers: Stack[PathConditionStackLayer] = Stack.empty
+=======
+       with Cloneable {
+
+  /* private */ var layers: Stack[PathConditionStackLayer] = Stack.empty
+>>>>>>> upstream/master
   private var markToLength: Map[Mark, Int] = Map.empty
   private var scopeMarks: List[Mark] = List.empty
   private var markCounter = new Counter(0)
@@ -292,6 +655,7 @@ private[decider] class LayeredPathConditionStack
 
   pushScope() /* Create an initial layer on the stack */
 
+<<<<<<< HEAD
   def setCurrentBranchCondition(condition: Term,
     conditionSemanticAstNode: Exp,
     conditionAstNode: Exp,
@@ -302,6 +666,33 @@ private[decider] class LayeredPathConditionStack
     layers.head.branchConditionSemanticAstNode = conditionSemanticAstNode
     layers.head.branchConditionAstNode = conditionAstNode
     layers.head.branchConditionOrigin = conditionOrigin
+=======
+  def setCurrentBranchCondition(condition: Term, conditionExp: (ast.Exp, Option[ast.Exp])): Unit = {
+    /* TODO: Split condition into top-level conjuncts as well? */
+
+    layers.head.branchCondition = condition
+    layers.head.branchConditionExp = conditionExp
+  }
+
+  def startDebugSubExp(): Unit = {
+    layers.head.startDebugSubExp()
+  }
+
+  def finishDebugSubExp(description: String): Unit = {
+    layers.head.finishDebugSubExp(description)
+  }
+
+  def addDebugExp(e: DebugExp): Unit = {
+    layers.head.addDebugExp(e)
+  }
+
+  def addNonGlobalDebugExp(assumptionDebugExp: DebugExp) : Unit = {
+    layers.head.addNonGlobalDebugExp(assumptionDebugExp)
+  }
+
+  def addGlobalDebugExp(assumptionDebugExp: DebugExp): Unit = {
+    layers.head.addGlobalDebugExp(assumptionDebugExp)
+>>>>>>> upstream/master
   }
 
   def add(assumption: Term): Unit = {
@@ -313,6 +704,18 @@ private[decider] class LayeredPathConditionStack
     allAssumptions ++= tlcs
   }
 
+<<<<<<< HEAD
+=======
+  def addDefinition(assumption: Term): Unit = {
+    /* TODO: Would be cleaner to not add assumptions that are already set as branch conditions */
+
+    val tlcs = assumption.topLevelConjuncts
+
+    tlcs foreach layers.head.addDefinition
+    allAssumptions ++= tlcs
+  }
+
+>>>>>>> upstream/master
   def add(declaration: Decl): Unit = {
     layers.head.add(declaration)
   }
@@ -333,11 +736,28 @@ private[decider] class LayeredPathConditionStack
     val mark = markCounter.next()
 
     markToLength += (mark -> layers.length)
+<<<<<<< HEAD
     layers = new PathConditionStackLayer() +: layers
 
     mark
   }
 
+=======
+
+    val debugExpStackTmp = if (layers.nonEmpty && Verifier.config.enableDebugging()) layers.head.debugExpStack else Stack.empty
+
+    layers = new PathConditionStackLayer() +: layers
+
+    layers.head.debugExpStack = debugExpStackTmp
+    mark
+  }
+
+  def popUntilMark(mark: Mark): Unit = {
+    assert(markToLength.contains(mark), "Cannot pop unknown mark")
+    popLayersAndRemoveMark(mark)
+  }
+
+>>>>>>> upstream/master
   private def popLayersAndRemoveMark(mark: Mark): Unit = {
     val targetLength = markToLength(mark)
     val dropLength = layers.length - targetLength
@@ -364,6 +784,7 @@ private[decider] class LayeredPathConditionStack
 
   def branchConditions: Stack[Term] = layers.flatMap(_.branchCondition)
 
+<<<<<<< HEAD
   def branchConditionsSemanticAstNodes: Stack[Exp] = layers.flatMap(_.branchConditionSemanticAstNode)
 
   def branchConditionsAstNodes: Stack[Exp] = layers.flatMap(_.branchConditionAstNode)
@@ -375,21 +796,62 @@ private[decider] class LayeredPathConditionStack
   def declarations: InsertionOrderedSet[Decl] =
     InsertionOrderedSet(layers.flatMap(_.declarations)) // Note: Performance?
 
+=======
+  override def branchConditionExps: Stack[(ast.Exp, Option[ast.Exp])] = layers.flatMap(_.branchConditionExp)
+
+  def assumptions: InsertionOrderedSet[Term] = allAssumptions
+
+  def assumptionExps: InsertionOrderedSet[DebugExp] = InsertionOrderedSet(layers.flatMap(_.assumptionDebugExps))
+
+  override def definingAssumptionExps: InsertionOrderedSet[DebugExp] = InsertionOrderedSet(layers.flatMap(_.globalDefiningAssumptionDebugExps) ++ layers.flatMap(_.nonGlobalDefiningAssumptionDebugExps))
+
+  def declarations: InsertionOrderedSet[Decl] =
+    InsertionOrderedSet(layers.flatMap(_.declarations)) // Note: Performance?
+
+  def definingAssumptions: InsertionOrderedSet[Term] =
+    InsertionOrderedSet(layers.flatMap(_.globalDefiningAssumptions) ++ layers.flatMap(_.nonGlobalDefiningAssumptions)) // Note: Performance?
+
+>>>>>>> upstream/master
   def contains(assumption: Term): Boolean = allAssumptions.contains(assumption)
 
   def conditionalized: Seq[Term] = conditionalized(layers)
 
+<<<<<<< HEAD
+=======
+  def conditionalizedExp: Seq[DebugExp] = conditionalizedExp(layers)
+
+>>>>>>> upstream/master
   def quantified(quantifier: Quantifier,
                  qvars: Seq[Var],
                  triggers: Seq[Trigger],
                  name: String,
                  isGlobal: Boolean,
                  ignore: Term)
+<<<<<<< HEAD
                 : (Seq[Quantification], Seq[Quantification]) = {
+=======
+                : (Seq[Term], Seq[Quantification]) = {
+>>>>>>> upstream/master
 
     quantified(layers, quantifier, qvars, triggers, name, isGlobal, ignore)
   }
 
+<<<<<<< HEAD
+=======
+  def quantifiedExp(quantifier: Quantifier,
+                    qvars: Seq[ast.Exp],
+                    tQvars: Seq[Var],
+                    triggers: Seq[ast.Trigger],
+                    tTriggers: Seq[Trigger],
+                    name: String,
+                    isGlobal: Boolean,
+                    ignore: Term)
+  : (InsertionOrderedSet[DebugExp], InsertionOrderedSet[DebugExp]) = {
+
+    quantifiedExp(layers, quantifier, qvars, tQvars, triggers, tTriggers, name, isGlobal, ignore)
+  }
+
+>>>>>>> upstream/master
   def mark(): Mark = pushLayer()
 
   def after(mark: Mark): RecordedPathConditions = {
@@ -421,6 +883,17 @@ private[decider] class LayeredPathConditionStack
     clonedStack
   }
 
+<<<<<<< HEAD
+=======
+  override def definitionsOnly: RecordedPathConditions = {
+    val result = duplicate()
+    result.layers = layers map (_.definitionsOnly())
+    result.allAssumptions = InsertionOrderedSet(layers.flatMap(_.globalDefiningAssumptions) ++
+      layers.flatMap(_.nonGlobalDefiningAssumptions))
+    result
+  }
+
+>>>>>>> upstream/master
   override def toString: String =  {
     val sb = new StringBuilder(s"${this.getClass.getSimpleName}:\n")
     val sep = s" ${"-" * 10}\n"
@@ -454,3 +927,16 @@ private[decider] class LayeredPathConditionStack
     sb.result()
   }
 }
+<<<<<<< HEAD
+=======
+
+object PathConditions {
+  def isGlobal(assumption: Term): Boolean = {
+    assumption match {
+      case quantification: Quantification => quantification.isGlobal
+      case _: IsReadPermVar => true
+      case _ => false
+    }
+  }
+}
+>>>>>>> upstream/master
