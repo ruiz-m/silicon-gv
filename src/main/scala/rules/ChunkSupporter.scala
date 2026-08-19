@@ -276,7 +276,8 @@ object chunkSupporter extends ChunkSupportRules {
 
 //<<<<<<< HEAD
         // tries to find the chunk in h
-        findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
+        //findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
+        takenChunk match {
           // I'm not sure if I need these checks but I included them to be safe - J
 /*<<<<<<< HEAD
           case Some(ch) if v.decider.check(ch.perm === perms, Verifier.config.checkTimeout()) && v.decider.check(perms === FullPerm, Verifier.config.checkTimeout()) =>
