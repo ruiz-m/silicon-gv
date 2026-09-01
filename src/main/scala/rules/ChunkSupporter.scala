@@ -285,7 +285,7 @@ object chunkSupporter extends ChunkSupportRules {
         else lookupGreedy _
       lookupFunction(s1, s1.h, s1.optimisticHeap, addToOh, resource,
         runtimeCheckFieldTarget, args, argsExp, pve, ve, v, generateChecks)((s2, tSnap, v1) =>
-        Q(s2.copy(h = s.h, optimisticHeap = s.optimisticHeap), s2.h, s2.optimisticHeap, tSnap, v1))
+        Q(s2.copy(h = s2.h, optimisticHeap = s2.optimisticHeap), s2.h, s2.optimisticHeap, tSnap, v1))
     }
 
   private def lookupGreedy(s: State,
