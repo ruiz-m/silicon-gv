@@ -268,7 +268,11 @@ object chunkSupporter extends ChunkSupportRules {
         //findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
         takenChunk match {
           // I'm not sure if I need these checks but I included them to be safe - J
+//<<<<<<< HEAD
           case Some(ch) if v.decider.check(ch.perm === perms, Verifier.config.checkTimeout()) /*&& v.decider.check(perms === FullPerm, Verifier.config.checkTimeout())*/ =>
+/*=======
+          case Some(ch) if v.decider.check(ch.perm === perms, Verifier.config.checkTimeout()) && v.decider.check(perms === FullPerm, Verifier.config.checkTimeout()) =>
+>>>>>>> upstream/frac-perm-final*/
             // handles removing all predicates from OH when field chunk is in optimistic heap (Note: field chunk in regular heap handled by next case) - Priyam
             if (!isRegularHeap){
               var newH2: Heap = newH.values.foldLeft(Heap()) { (currHeap, chunk) =>
@@ -316,7 +320,11 @@ object chunkSupporter extends ChunkSupportRules {
       case p: ast.Predicate => {
         /* heap-rem-pred */
         findChunk[NonQuantifiedChunk](h.values, id, args, v) match {
+//<<<<<<< HEAD
           case Some(ch) if v.decider.check(ch.perm === perms, Verifier.config.checkTimeout()) =>
+/*=======
+          case Some(ch) if v.decider.check(perms === FullPerm, Verifier.config.checkTimeout()) =>
+>>>>>>> upstream/frac-perm-final*/
             val toTake = PermMin(ch.perm, perms)
             val newChunk = ch.withPerm(PermMinus(ch.perm, toTake), None)
             val takenChunk = Some(ch.withPerm(toTake, None))
@@ -362,7 +370,7 @@ object chunkSupporter extends ChunkSupportRules {
         else lookupGreedy _
       lookupFunction(s1, s1.h, s1.optimisticHeap, addToOh, resource,
         runtimeCheckFieldTarget, args, argsExp, pve, ve, v, generateChecks)((s2, tSnap, v1) =>
-        Q(s2.copy(h = s.h, optimisticHeap = s.optimisticHeap), s2.h, s2.optimisticHeap, tSnap, v1))
+        Q(s2.copy(h = s2.h, optimisticHeap = s2.optimisticHeap), s2.h, s2.optimisticHeap, tSnap, v1))
     }
 
   private def lookupGreedy(s: State,

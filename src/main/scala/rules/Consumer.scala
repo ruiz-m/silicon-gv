@@ -709,9 +709,17 @@ object consumer extends ConsumptionRules {
                       // replace oh1 and h1 with Heap() since OH and H should be emptied since predicate was in OH - Priyam
                 } 
 
+//<<<<<<< HEAD
                 else if (chunkExisted) {
 
                   profilingInfo.incrementEliminatedConjuncts
+/*=======
+                        Q(s5, Heap(), Heap(), snap2, v4)}})
+                        // replace oh1 and h1 with Heap() since OH and H should be emptied since predicate was in OH - Priyam
+                  } 
+
+                  else if (chunkExisted) {
+>>>>>>> upstream/frac-perm-final*/
 
                   Q(s4, oh, h1, snap1, v3)
                 } else {
