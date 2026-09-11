@@ -322,7 +322,7 @@ object producer extends ProductionRules {
         evalpc(s0, eRcvr, pve, v, false)((s1, tRcvr, eRcvrNew, v1) =>
           evalpc(s1, perm, pve, v1, false)((s2, tPerm, ePermNew, v2) => {
             val s2_0 = s2.copy(generateChecks = true)
-            if(chunkSupporter.inHeap(s2_0, s2_0.h, s2_0.h.values, field, Seq(tRcvr), v2)) {
+            if(chunkSupporter.inHeap(s2_0, s2_0.h, s2_0.h.values, field, Seq(tRcvr), v2) && !v2.decider.checkSmoke()) {
               // NEED: Actually because it's in the heap, but don't know how to do that yet
               createFailure(pve dueTo NegativePermission(perm), v2, s2_0, "") }
             else {
