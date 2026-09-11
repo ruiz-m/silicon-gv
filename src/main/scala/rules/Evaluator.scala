@@ -1141,18 +1141,10 @@ object evaluator extends EvaluationRules {
 //                        val c4 = c3.decCycleCounter(predicate)
 //                        eval(σ1, eIn, pve, c4)((tIn, c5) =>
 //                          QB(tIn, c5))})
-//<<<<<<< HEAD
                     val hTotal = s4.h + s4.optimisticHeap
                     val predFramed = chunkSupporter.inHeap(s4, hTotal, hTotal.values, predicate, tArgs, v2)
                     
                     consume(s4, acc, true, pve, v3)((s5, snap, v4) => {
-/*=======
-
-                    val hTotal = s4.h + s4.optimisticHeap
-                    val predFramed = chunkSupporter.inHeap(hTotal, hTotal.values, predicate, tArgs, v2)
-
-                    consume(s4, acc, pve, v3)((s5, snap, v4) => {
->>>>>>> upstream/master*/
                       val s5_1 = s5.copy(forFraming = false)
                       val fr6 =
                         s5.functionRecorder.recordSnapshot(pa, v4.decider.pcs.branchConditions, snap.get)

@@ -876,7 +876,6 @@ object executor extends ExecutionRules {
         val ePerm = pap.perm
         val predicate = s.program.findPredicate(predicateName)
         val pve = FoldFailed(fold)
-//<<<<<<< HEAD
         evals(s, eArgs, _ => pve, v)((s1, tArgs, eArgsNew, v1) =>
           eval(s1, ePerm, pve, v1)((s1a, tPerm, ePermNew, v1a) => 
             permissionSupporter.assertPositive(s1a, tPerm, ePerm, pve, v1a)((s2, v2) => {
@@ -884,14 +883,6 @@ object executor extends ExecutionRules {
                 predicateSupporter.fold(s2, predicate, Some(fold), tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v2)(Q)
             })
           ))
-/*=======
-        evals(s, eArgs, _ => pve, v)((s1, tArgs, v1) =>
-          eval(s1, ePerm, pve, v1)((s1a, tPerm, v1a) => 
-            permissionSupporter.assertPositive(s1a, tPerm, ePerm, pve, v1a)((s2, v2) => {
-                val wildcards = s2.constrainableARPs -- s1.constrainableARPs
-                predicateSupporter.fold(s2, predicate, Some(fold), tArgs, tPerm, wildcards, pve, v2)(Q)
-          })))
->>>>>>> upstream/frac-perm*/
 
       case unfold @ ast.Unfold(pap @ ast.PredicateAccessPredicate(pa @ ast.PredicateAccess(eArgs, predicateName), _)) =>
         assert(s.constrainableARPs.isEmpty)
@@ -918,23 +909,10 @@ object executor extends ExecutionRules {
               s2.smCache
             }
 
-/*<<<<<<< HEAD
-            v2.decider.assertgv(s2.isImprecise, IsPositive(tPerm)) { //The IsPositive check is redundant
-              case true =>
-                val wildcards = s2.constrainableARPs -- s1.constrainableARPs
-                predicateSupporter.unfold(s2.copy(smCache = smCache1), predicate, Some(unfold), tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v2, pa)(Q)
-              case false =>
-                createFailure(pve dueTo NegativePermission(ePerm), v2, s2, "")
-            } match {
-              case (verificationResult, _) => verificationResult
-            }
-          }))
-=======*/
             permissionSupporter.assertPositive(s2, tPerm, ePerm, pve, v2)((s3, v3) => {
                 val wildcards = s3.constrainableARPs -- s1.constrainableARPs
                 predicateSupporter.unfold(s3.copy(smCache = smCache1), predicate, Some(unfold), tArgs, eArgsNew, tPerm, ePermNew, wildcards, pve, v2, pa)(Q)
         })}))
-//>>>>>>> upstream/frac-perm
 
       /*
       case pckg @ ast.Package(wand, proofScript) =>
@@ -1020,7 +998,6 @@ object executor extends ExecutionRules {
     executed
   }
 
-//<<<<<<< HEAD
    private def ssaifyRhs(rhs: Term, rhsExp: ast.Exp, rhsExpNew: Option[ast.Exp], name: String, typ: ast.Type, v: Verifier, s : State): (Term, Option[ast.Exp]) = {
      rhs match {
        /* 2025-01-29 Long:
@@ -1061,39 +1038,6 @@ object executor extends ExecutionRules {
          (t, eNew)
      }
    }
-//=======
-  //private def ssaifyRhs(rhs: Term, name: String, typ: ast.Type, v: Verifier): Term = {
-    /* 2025-10-22 Long:
-    rhs match {
-      case _: Var | _: Literal =>
-        rhs
-      case _ =>
-        ...
-      } */
-
-    /* 2018-06-05 Malte:
-     *   This case was previously guarded by the condition
-     *     rhs.existsDefined {
-     *       case t if v.triggerGenerator.isForbiddenInTrigger(t) => true
-     *     }
-     *   and followed by a catch-all case in which rhs was returned.
-     *   However, reducing the number of fresh symbols does not appear to improve
-     *   performance; instead, it can cause an exponential blow-up in term size, as
-     *   reported by Silicon issue #328.
-     */
-    //val t = v.decider.fresh(name, v.symbolConverter.toSort(typ))
-    //v.decider.assume(t === rhs)
-    /* 2025-01-29 Long:
-     * record rhs where the Var was freshened in freshTerms
-     * freshTerms should not contain this Var yet
-     */
-    /*if (SymbExLogger.enabled) {
-      SymbExLogger.freshTerms += t -> rhs
-    }
-
-    t
-  }
->>>>>>> upstream/master*/
 
   private val hack407_method_name_prefix = "___silicon_hack407_havoc_all_"
 
